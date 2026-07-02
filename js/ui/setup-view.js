@@ -36,7 +36,7 @@ export function renderSetupNames(root, state, app) {
     el("h1", { text: "Darts Tournament" }),
     el("p", { class: "subtitle", text: "Enter every player's name. They'll be randomly paired into doubles teams." }),
     el("div", { class: "panel" }, [
-      el("div", { class: "row" }, [input, el("button", { class: "primary", text: "Add", onclick: submit })]),
+      el("div", { class: "row" }, [input, el("button", { class: "primary", text: "+", onclick: submit })]),
       chips,
       el("p", {
         class: "waiting-strip",
@@ -44,8 +44,8 @@ export function renderSetupNames(root, state, app) {
           state.players.length === 0
             ? "No players yet."
             : remaining > 0
-            ? `${state.players.length} player(s) entered — add ${remaining} more (minimum ${MIN_PLAYERS}).`
-            : `${state.players.length} player(s) entered.`,
+              ? `${state.players.length} player(s) entered — add ${remaining} more (minimum ${MIN_PLAYERS}).`
+              : `${state.players.length} player(s) entered.`,
       }),
     ]),
     el("div", { class: "actions" }, [
@@ -67,22 +67,22 @@ export function renderTeamConfirm(root, state, app) {
 
   const banner = sitOut
     ? el("div", { class: "banner" }, [
-        el("p", { text: `${sitOut.name} sits out this tournament (odd number of players).` }),
-        el(
-          "select",
-          {
-            onchange: (e) => {
-              if (e.target.value) app.swapSitOut(e.target.value);
-            },
+      el("p", { text: `${sitOut.name} sits out this tournament (odd number of players).` }),
+      el(
+        "select",
+        {
+          onchange: (e) => {
+            if (e.target.value) app.swapSitOut(e.target.value);
           },
-          [
-            el("option", { value: "", text: "Choose a different player to sit out…" }),
-            ...state.players
-              .filter((p) => !p.sittingOut)
-              .map((p) => el("option", { value: p.id, text: p.name })),
-          ]
-        ),
-      ])
+        },
+        [
+          el("option", { value: "", text: "Choose a different player to sit out…" }),
+          ...state.players
+            .filter((p) => !p.sittingOut)
+            .map((p) => el("option", { value: p.id, text: p.name })),
+        ]
+      ),
+    ])
     : null;
 
   const teamCards = state.teams.map((t) => el("div", { class: "team-card", text: t.name }));
