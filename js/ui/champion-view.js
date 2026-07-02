@@ -1,6 +1,6 @@
 // Champion screen: winner/runner-up banner + export/start-over actions.
 
-import { el, mount } from "./render.js";
+import { el, mount, showConfirm } from "./render.js";
 import { exportHTML, exportJSON } from "../export.js";
 
 function teamLabel(state, id) {
@@ -27,9 +27,7 @@ export function renderChampionView(root, state, app) {
         class: "danger",
         text: "Start New Tournament",
         onclick: () => {
-          if (window.confirm("Start a new tournament? This clears the current results.")) {
-            app.startNewTournament();
-          }
+          showConfirm("Start a new tournament? This clears the current results.", () => app.startNewTournament());
         },
       }),
     ]),

@@ -1,7 +1,7 @@
 // Live match queue screen: one card per board, tap a team name to record the
 // winner, plus a collapsible round-by-round listing of both brackets.
 
-import { el, mount } from "./render.js";
+import { el, mount, showConfirm } from "./render.js";
 
 function teamLabel(state, teamId) {
   if (teamId == null) return "TBD";
@@ -67,9 +67,7 @@ function renderBoardCard(state, app, board) {
   const bName = teamLabel(state, match.teamBId);
 
   function pickWinner(teamId, teamName) {
-    if (window.confirm(`${teamName} won?`)) {
-      app.recordResult(match.id, teamId);
-    }
+    showConfirm(`${teamName} won?`, () => app.recordResult(match.id, teamId));
   }
 
   return el("div", { class: "board-card" }, [

@@ -30,3 +30,26 @@ export function mount(root, node) {
   clearNode(root);
   root.appendChild(node);
 }
+
+// In-app replacement for window.confirm(): browsers add a "don't allow this
+// site to prompt again" checkbox to native confirm() after repeated calls,
+// which then silently blocks all future prompts. This avoids that entirely.
+export function showConfirm(message, onConfirm) {
+  const overlay = el("div", { class: "modal-overlay" }, [
+    el("div", { class: "modal-dialog" }, [
+      el("p", { text: message }),
+      el("div", { class: "actions row-actions" }, [
+        el("button", { class: "secondary", text: "Cancel", onclick: () => overlay.remove() }),
+        el("button", {
+          class: "primary",
+          text: "Confirm",
+          onclick: () => {
+            overlay.remove();
+            onConfirm();
+          },
+        }),
+      ]),
+    ]),
+  ]);
+  document.body.appendChild(overlay);
+}
