@@ -33,7 +33,7 @@ export function renderSetupNames(root, state, app) {
   const remaining = Math.max(0, MIN_PLAYERS - state.players.length);
 
   const screen = el("div", { class: "screen" }, [
-    el("h1", { text: "Darts Tournament" }),
+    el("h1", { text: "Hank's Darts Tournament" }),
     el("p", { class: "subtitle", text: "Enter every player's name. They'll be randomly paired into doubles teams." }),
     el("div", { class: "panel" }, [
       el("div", { class: "row" }, [input, el("button", { class: "primary", text: "+", onclick: submit })]),
