@@ -34,7 +34,7 @@ export function renderSetupNames(root, state, app) {
 
   const screen = el("div", { class: "screen" }, [
     el("h1", { text: "Hank's Darts Tournament" }),
-    el("p", { class: "subtitle", text: "Enter every player's name. They'll be randomly paired into doubles teams." }),
+    el("p", { class: "subtitle", text: "Enter every player's name, then pair them into doubles teams." }),
     el("div", { class: "panel" }, [
       el("div", { class: "row" }, [input, el("button", { class: "primary", text: "+", onclick: submit })]),
       chips,
@@ -51,15 +51,73 @@ export function renderSetupNames(root, state, app) {
     el("div", { class: "actions" }, [
       el("button", {
         class: "primary",
-        text: "Next: Form Teams",
+        text: "Random Pairing",
         disabled: state.players.length < MIN_PLAYERS,
         onclick: () => app.goToTeams(),
+      }),
+      el("button", {
+        text: "Manual Pairing",
+        disabled: state.players.length < MIN_PLAYERS,
+        onclick: () => app.goToManualTeams(),
       }),
     ]),
   ]);
 
   mount(root, screen);
   input.focus();
+}
+
+export function renderManualPairing(root, state, app) {
+  const mp = state.manualPairing;
+
+  const unpairedChips = el(
+    "div",
+    { class: "chip-list" },
+    mp.unpairedIds.map((id) => {
+      const p = state.players.find((pl) => pl.id === id);
+      return el("button", {
+        class: `chip-select${mp.selectedId === id ? " selected" : ""}`,
+        text: p.name,
+        onclick: () => app.selectManualPlayer(id),
+      });
+    })
+  );
+
+  const teamRows = state.teams.map((t) =>
+    el("div", { class: "team-card row" }, [
+      el("span", { text: t.name }),
+      el("button", { class: "link", text: "Undo", onclick: () => app.undoManualTeam(t.id) }),
+    ])
+  );
+
+  const helperText =
+    mp.unpairedIds.length === 0
+      ? "All players paired."
+      : mp.unpairedIds.length === 1
+        ? `${state.players.find((p) => p.id === mp.unpairedIds[0]).name} will sit out (only one player left).`
+        : mp.selectedId == null
+          ? "Tap a player, then tap their partner to form a team."
+          : `Tap ${state.players.find((p) => p.id === mp.selectedId).name}'s partner.`;
+
+  const screen = el("div", { class: "screen" }, [
+    el("h1", { text: "Manual Pairing" }),
+    el("p", { class: "subtitle", text: helperText }),
+    el("div", { class: "panel" }, [
+      el("h2", { text: `Unpaired (${mp.unpairedIds.length})` }),
+      unpairedChips,
+    ]),
+    state.teams.length > 0
+      ? el("div", { class: "panel" }, [
+          el("h2", { text: `${state.teams.length} Team(s) Formed` }),
+          el("div", { class: "chip-list", style: "flex-direction:column;align-items:stretch;" }, teamRows),
+        ])
+      : null,
+    el("div", { class: "actions" }, [
+      el("button", { class: "link", text: "← Back to Players", onclick: () => app.backToSetup() }),
+    ]),
+  ]);
+
+  mount(root, screen);
 }
 
 export function renderTeamConfirm(root, state, app) {
@@ -87,6 +145,11 @@ export function renderTeamConfirm(root, state, app) {
 
   const teamCards = state.teams.map((t) => el("div", { class: "team-card", text: t.name }));
 
+  const redoButton =
+    state.teamsMode === "manual"
+      ? el("button", { text: "Edit Pairing", onclick: () => app.editManualPairing() })
+      : el("button", { text: "Re-shuffle Teams", onclick: () => app.reshuffleTeams() });
+
   const screen = el("div", { class: "screen" }, [
     el("h1", { text: "Confirm Teams" }),
     banner,
@@ -95,7 +158,7 @@ export function renderTeamConfirm(root, state, app) {
       el("div", { class: "chip-list", style: "flex-direction:column;align-items:stretch;" }, teamCards),
     ]),
     el("div", { class: "actions" }, [
-      el("button", { text: "Re-shuffle Teams", onclick: () => app.reshuffleTeams() }),
+      redoButton,
       el("button", { class: "primary", text: "Confirm Teams", onclick: () => app.confirmTeams() }),
       el("button", { class: "link", text: "← Back to Players", onclick: () => app.backToSetup() }),
     ]),

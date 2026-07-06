@@ -34,6 +34,7 @@ function freeBoardForMatch(state, matchId) {
 export function recordResult(state, matchId, winnerId) {
   freeBoardForMatch(state, matchId);
   completeMatch(state, matchId, winnerId);
+  (state.completedMatchIds = state.completedMatchIds || []).push(matchId);
   assignBoards(state);
   return state;
 }

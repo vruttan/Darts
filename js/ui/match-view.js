@@ -52,6 +52,45 @@ function renderBracketSection(title, matches, state, openByDefault) {
   return el("details", { class: "bracket-section", open: openByDefault }, [el("summary", { text: title }), ...body]);
 }
 
+function bracketLabel(bracket) {
+  switch (bracket) {
+    case "winners":
+      return "Winners Bracket";
+    case "losers":
+      return "Losers Bracket";
+    case "grandfinal":
+      return "Grand Final";
+    case "grandfinal-reset":
+      return "Grand Final Reset";
+    default:
+      return bracket;
+  }
+}
+
+function matchContextLabel(m) {
+  const label = bracketLabel(m.bracket);
+  return m.bracket === "grandfinal" || m.bracket === "grandfinal-reset" ? label : `${label} — Round ${m.round}`;
+}
+
+function renderCompletedCard(state, m) {
+  const aName = teamLabel(state, m.teamAId);
+  const bName = teamLabel(state, m.teamBId);
+  return el("div", { class: "board-card complete" }, [
+    el("div", { class: "board-label", text: matchContextLabel(m) }),
+    el("button", {
+      class: `team-tap ${m.winnerId === m.teamAId ? "winner" : "loser"}`,
+      text: aName,
+      disabled: true,
+    }),
+    el("div", { class: "vs", text: "vs" }),
+    el("button", {
+      class: `team-tap ${m.winnerId === m.teamBId ? "winner" : "loser"}`,
+      text: bName,
+      disabled: true,
+    }),
+  ]);
+}
+
 function renderBoardCard(state, app, board) {
   if (!board.matchId) {
     return el("div", { class: "board-card idle" }, [
@@ -72,7 +111,7 @@ function renderBoardCard(state, app, board) {
 
   return el("div", { class: "board-card" }, [
     el("div", { class: "board-label", text: `${labelPrefix}Board ${board.number}` }),
-    el("button", { class: "team-tap primary", text: aName, onclick: () => pickWinner(match.teamAId, aName) }),
+    el("button", { class: "team-tap", text: aName, onclick: () => pickWinner(match.teamAId, aName) }),
     el("div", { class: "vs", text: "vs" }),
     el("button", { class: "team-tap", text: bName, onclick: () => pickWinner(match.teamBId, bName) }),
     match.bracket === "grandfinal-reset"
@@ -94,11 +133,27 @@ export function renderMatchView(root, state, app) {
   const lbMatches = allMatches.filter((m) => m.bracket === "losers");
   const waitingCount = allMatches.filter((m) => m.status === "ready").length;
 
+  const completedMatches = (state.completedMatchIds || [])
+    .slice()
+    .reverse()
+    .map((id) => state.matches[id])
+    .filter(Boolean);
+
   const screen = el("div", { class: "screen" }, [
     el("h1", { text: "Live Matches" }),
     boardsGrid,
     waitingCount > 0
       ? el("p", { class: "waiting-strip", text: `${waitingCount} match(es) waiting for a free board.` })
+      : null,
+    completedMatches.length > 0
+      ? el("div", { class: "panel" }, [
+          el("h2", { text: "Completed Matches" }),
+          el(
+            "div",
+            { class: "board-grid" },
+            completedMatches.map((m) => renderCompletedCard(state, m))
+          ),
+        ])
       : null,
     renderBracketSection("Grand Final", grandFinalMatches, state, true),
     renderBracketSection("Winners Bracket", wbMatches, state, false),

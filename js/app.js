@@ -3,7 +3,7 @@
 import * as Store from "./state.js";
 import * as Players from "./players.js";
 import { recordResult } from "./boards.js";
-import { renderSetupNames, renderTeamConfirm, renderBoardCount } from "./ui/setup-view.js";
+import { renderSetupNames, renderManualPairing, renderTeamConfirm, renderBoardCount } from "./ui/setup-view.js";
 import { renderMatchView } from "./ui/match-view.js";
 import { renderChampionView } from "./ui/champion-view.js";
 
@@ -27,11 +27,30 @@ const app = {
   },
   goToTeams() {
     Players.generateTeams(state);
+    state.teamsMode = "random";
     state.phase = "teams";
     persistAndRender();
   },
   reshuffleTeams() {
     Players.generateTeams(state);
+    persistAndRender();
+  },
+  goToManualTeams() {
+    Players.startManualPairing(state);
+    state.teamsMode = "manual";
+    state.phase = "teams";
+    persistAndRender();
+  },
+  selectManualPlayer(playerId) {
+    Players.selectManualPlayer(state, playerId);
+    persistAndRender();
+  },
+  undoManualTeam(teamId) {
+    Players.undoManualTeam(state, teamId);
+    persistAndRender();
+  },
+  editManualPairing() {
+    Players.startManualPairing(state);
     persistAndRender();
   },
   swapSitOut(playerId) {
@@ -71,7 +90,11 @@ const app = {
 function render() {
   switch (state.phase) {
     case "teams":
-      renderTeamConfirm(root, state, app);
+      if (state.teamsMode === "manual" && !Players.isManualPairingComplete(state)) {
+        renderManualPairing(root, state, app);
+      } else {
+        renderTeamConfirm(root, state, app);
+      }
       break;
     case "boards":
       renderBoardCount(root, state, app);

@@ -41,6 +41,62 @@ export function generateTeams(state) {
   return { sitOutPlayerId: sitOutPlayer ? sitOutPlayer.id : null };
 }
 
+// Begins (or restarts) manual pairing: clears any existing teams and puts
+// every player back in the unpaired pool.
+export function startManualPairing(state) {
+  state.teams = [];
+  state.manualPairing = { unpairedIds: state.players.map((p) => p.id), selectedId: null };
+  for (const p of state.players) p.sittingOut = false;
+}
+
+// True once no more pairs can be formed (0 players left, or 1 sitting out).
+export function isManualPairingComplete(state) {
+  const mp = state.manualPairing;
+  return !mp || mp.unpairedIds.length <= 1;
+}
+
+function updateManualSitOut(state) {
+  const mp = state.manualPairing;
+  for (const p of state.players) p.sittingOut = false;
+  if (mp.unpairedIds.length === 1) {
+    const p = state.players.find((pl) => pl.id === mp.unpairedIds[0]);
+    if (p) p.sittingOut = true;
+  }
+}
+
+// Tapping a player during manual pairing either selects them (first tap),
+// deselects them (tapping the same player again), or pairs them with the
+// currently-selected player into a new team (tapping a different player).
+export function selectManualPlayer(state, playerId) {
+  const mp = state.manualPairing;
+  if (!mp || !mp.unpairedIds.includes(playerId)) return;
+
+  if (mp.selectedId === playerId) {
+    mp.selectedId = null;
+    return;
+  }
+
+  if (mp.selectedId == null) {
+    mp.selectedId = playerId;
+    return;
+  }
+
+  const playerIds = [mp.selectedId, playerId];
+  state.teams.push({ id: makeId("t"), name: teamName(state.players, playerIds), playerIds });
+  mp.unpairedIds = mp.unpairedIds.filter((id) => !playerIds.includes(id));
+  mp.selectedId = null;
+  updateManualSitOut(state);
+}
+
+// Breaks up a manually-formed team, returning both players to the unpaired pool.
+export function undoManualTeam(state, teamId) {
+  const idx = state.teams.findIndex((t) => t.id === teamId);
+  if (idx === -1) return;
+  const [team] = state.teams.splice(idx, 1);
+  state.manualPairing.unpairedIds.push(...team.playerIds);
+  updateManualSitOut(state);
+}
+
 // Swaps who sits out: the given player takes the current sit-out player's
 // place on a team, and the current sit-out player sits out instead. Only
 // meaningful when the player count is odd (i.e. there is a sit-out slot).

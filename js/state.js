@@ -17,8 +17,11 @@ export function createInitialState() {
     boardCount: 3,
     players: [],
     teams: [],
+    teamsMode: null, // "random" | "manual", set once pairing begins
+    manualPairing: null, // { unpairedIds, selectedId }, only set during manual pairing
     matches: {},
     matchOrder: [],
+    completedMatchIds: [], // match ids in the order recordResult() completed them
     boards: [],
     grandFinal: null,
     championTeamId: null,
