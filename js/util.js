@@ -36,6 +36,19 @@ export function seedOrder(size) {
   return out;
 }
 
+// Tally wins/losses per team across completed matches. Byes don't count as
+// played games. Returns a map of teamId -> { wins, losses }.
+export function teamRecords(matches) {
+  const records = {};
+  const rec = (id) => (records[id] = records[id] || { wins: 0, losses: 0 });
+  for (const m of Object.values(matches)) {
+    if (m.status !== "complete" || m.isBye) continue;
+    if (m.winnerId != null) rec(m.winnerId).wins += 1;
+    if (m.loserId != null) rec(m.loserId).losses += 1;
+  }
+  return records;
+}
+
 let idCounter = 0;
 export function makeId(prefix) {
   idCounter += 1;

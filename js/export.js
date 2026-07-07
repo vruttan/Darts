@@ -1,6 +1,8 @@
 // Client-side only export: HTML report + JSON data dump, via Blob + anchor
 // download. No server involved.
 
+import { teamRecords } from "./util.js";
+
 function downloadBlob(content, filename, mime) {
   const blob = new Blob([content], { type: mime });
   const url = URL.createObjectURL(blob);
@@ -26,17 +28,100 @@ function escapeHtml(str) {
   return String(str).replace(/[&<>"']/g, (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" }[c]));
 }
 
-function matchRow(state, m) {
-  const a = escapeHtml(teamLabel(state, m.teamAId));
-  const b = escapeHtml(teamLabel(state, m.teamBId));
-  const winner = m.winnerId ? escapeHtml(teamLabel(state, m.winnerId)) : "";
-  return `<tr><td>${m.round}</td><td>${a}</td><td>${b}</td><td>${winner}</td></tr>`;
+// ---- Bracket diagram rendering ----
+// Each bracket section is laid out at export time: one column per round,
+// match cards positioned so a match sits vertically centered between its
+// feeder matches, with SVG elbow connectors following the teamASource /
+// teamBSource pointers (same-bracket sources only — losers-bracket slots fed
+// from the winners bracket arrive "from outside" and get no line).
+const BD = { cardW: 190, cardH: 56, colGap: 44, rowGap: 16, headerH: 30 };
+
+function teamSlot(state, records, m, teamId) {
+  const isWinner = m.status === "complete" && m.winnerId === teamId;
+  const cls = m.status === "complete" ? (isWinner ? "bd-team win" : "bd-team lose") : "bd-team";
+  const name = escapeHtml(teamLabel(state, teamId));
+  const r = teamId != null ? records[teamId] || { wins: 0, losses: 0 } : null;
+  const rec = r ? `<span class="bd-rec">${r.wins}:${r.losses}</span>` : "";
+  return `<div class="${cls}"><span class="bd-name">${name}</span>${rec}</div>`;
 }
 
-function bracketTable(title, matches, state) {
+function matchCard(state, records, m, style) {
+  let slots;
+  if (m.isBye) {
+    const knownId = m.teamAId != null ? m.teamAId : m.teamBId;
+    slots = teamSlot(state, records, m, knownId) + `<div class="bd-team bye">BYE</div>`;
+  } else {
+    slots = teamSlot(state, records, m, m.teamAId) + teamSlot(state, records, m, m.teamBId);
+  }
+  return `<div class="bd-match"${style ? ` style="${style}"` : ""}>${slots}</div>`;
+}
+
+function layoutBracket(matches) {
+  const roundNums = [...new Set(matches.map((m) => m.round))].sort((a, b) => a - b);
+  const pos = new Map();
+  roundNums.forEach((r, col) => {
+    const x = col * (BD.cardW + BD.colGap);
+    let cursor = BD.headerH;
+    for (const m of matches.filter((match) => match.round === r)) {
+      // Center on same-bracket feeder matches when they exist; slots fed from
+      // the other bracket just stack below the previous card in the column.
+      const srcCenters = [m.teamASource, m.teamBSource]
+        .filter((s) => s && pos.has(s.matchId))
+        .map((s) => pos.get(s.matchId).y + BD.cardH / 2);
+      let y = srcCenters.length
+        ? srcCenters.reduce((a, b) => a + b, 0) / srcCenters.length - BD.cardH / 2
+        : cursor;
+      y = Math.max(y, cursor);
+      pos.set(m.id, { x, y });
+      cursor = y + BD.cardH + BD.rowGap;
+    }
+  });
+  const width = roundNums.length * (BD.cardW + BD.colGap) - BD.colGap;
+  const height = Math.max(...[...pos.values()].map((p) => p.y)) + BD.cardH + 8;
+  return { pos, roundNums, width, height };
+}
+
+function bracketDiagram(title, matches, state, records) {
   if (matches.length === 0) return "";
-  const rows = matches.map((m) => matchRow(state, m)).join("");
-  return `<h2>${title}</h2><table><thead><tr><th>Round</th><th>Team A</th><th>Team B</th><th>Winner</th></tr></thead><tbody>${rows}</tbody></table>`;
+  const { pos, roundNums, width, height } = layoutBracket(matches);
+
+  const paths = [];
+  for (const m of matches) {
+    const p = pos.get(m.id);
+    for (const s of [m.teamASource, m.teamBSource]) {
+      if (!s || !pos.has(s.matchId)) continue;
+      const sp = pos.get(s.matchId);
+      const x1 = sp.x + BD.cardW;
+      const y1 = sp.y + BD.cardH / 2;
+      const y2 = p.y + BD.cardH / 2;
+      const midX = x1 + BD.colGap / 2;
+      paths.push(`<path d="M ${x1} ${y1} H ${midX} V ${y2} H ${p.x}"/>`);
+    }
+  }
+
+  const headers = roundNums
+    .map((r, col) => `<div class="bd-round" style="left:${col * (BD.cardW + BD.colGap)}px">Round ${r}</div>`)
+    .join("");
+  const cards = matches
+    .map((m) => matchCard(state, records, m, `left:${pos.get(m.id).x}px;top:${pos.get(m.id).y}px`))
+    .join("");
+
+  return `<h2>${title}</h2>
+<div class="bd-scroll"><div class="bd-canvas" style="width:${width}px;height:${height}px">
+<svg width="${width}" height="${height}" aria-hidden="true">${paths.join("")}</svg>
+${headers}${cards}
+</div></div>`;
+}
+
+function grandFinalSection(state, records) {
+  const gf1 = state.matches[state.grandFinal.game1MatchId];
+  const gf2 = state.matches[state.grandFinal.resetMatchId];
+  const items = [{ m: gf1, caption: "Game 1" }];
+  if (gf2.status === "complete") items.push({ m: gf2, caption: "Bracket Reset" });
+  const cards = items
+    .map(({ m, caption }) => `<div class="bd-gf-item"><div class="bd-round">${caption}</div>${matchCard(state, records, m, "")}</div>`)
+    .join("");
+  return `<h2>Grand Final</h2><div class="bd-gf">${cards}</div>`;
 }
 
 export function exportHTML(state) {
@@ -48,21 +133,20 @@ export function exportHTML(state) {
   const championName = escapeHtml(teamLabel(state, state.championTeamId));
   const runnerUpName = escapeHtml(teamLabel(state, runnerUpId));
 
+  const records = teamRecords(state.matches);
   const teamsRows = state.teams
     .map((t) => {
       const names = t.playerIds
         .map((id) => escapeHtml(state.players.find((p) => p.id === id)?.name || "?"))
         .join(" & ");
-      return `<tr><td>${escapeHtml(t.name)}</td><td>${names}</td></tr>`;
+      const r = records[t.id] || { wins: 0, losses: 0 };
+      return `<tr><td>${escapeHtml(t.name)}</td><td>${names}</td><td>${r.wins}:${r.losses}</td></tr>`;
     })
     .join("");
 
   const allMatches = state.matchOrder.map((id) => state.matches[id]);
   const wb = allMatches.filter((m) => m.bracket === "winners");
   const lb = allMatches.filter((m) => m.bracket === "losers");
-  const gf = allMatches
-    .filter((m) => m.bracket === "grandfinal" || m.bracket === "grandfinal-reset")
-    .filter((m) => m.status === "complete");
 
   const html = `<!DOCTYPE html>
 <html>
@@ -70,12 +154,30 @@ export function exportHTML(state) {
 <meta charset="UTF-8">
 <title>Darts Tournament Results</title>
 <style>
-body{font-family:Arial,sans-serif;background:#111;color:#eee;padding:24px;max-width:800px;margin:0 auto;}
+body{font-family:Arial,sans-serif;background:#111;color:#eee;padding:24px;max-width:960px;margin:0 auto;}
 h1{color:#2e9e5b;}
 table{width:100%;border-collapse:collapse;margin-bottom:24px;}
 th,td{border:1px solid #444;padding:8px;text-align:left;}
 th{background:#222;}
 .banner{background:#1c1c1c;border:1px solid #2e9e5b;border-radius:8px;padding:16px;text-align:center;margin-bottom:24px;}
+.bd-scroll{overflow-x:auto;padding-bottom:8px;margin-bottom:24px;}
+.bd-canvas{position:relative;}
+.bd-canvas svg{position:absolute;top:0;left:0;}
+.bd-canvas path{stroke:#444;stroke-width:2;fill:none;}
+.bd-round{color:#8a8a8a;font-size:12px;text-transform:uppercase;letter-spacing:.05em;}
+.bd-canvas .bd-round{position:absolute;top:0;width:${BD.cardW}px;}
+.bd-canvas .bd-match{position:absolute;}
+.bd-match{width:${BD.cardW}px;height:${BD.cardH}px;box-sizing:border-box;background:#1c1c1c;border:1px solid #333;border-radius:6px;overflow:hidden;display:flex;flex-direction:column;}
+.bd-team{flex:1;display:flex;align-items:center;justify-content:space-between;gap:8px;padding:0 10px;font-size:13px;border-left:3px solid transparent;min-width:0;}
+.bd-team + .bd-team{border-top:1px solid #2a2a2a;}
+.bd-team.win{border-left-color:#2e9e5b;font-weight:bold;}
+.bd-team.win .bd-name::after{content:" \\2713";color:#2e9e5b;}
+.bd-team.lose .bd-name{color:#999;}
+.bd-team.bye{color:#777;font-style:italic;}
+.bd-name{white-space:nowrap;overflow:hidden;text-overflow:ellipsis;}
+.bd-rec{color:#8a8a8a;font-size:11px;font-variant-numeric:tabular-nums;flex-shrink:0;}
+.bd-gf{display:flex;gap:24px;flex-wrap:wrap;margin-bottom:24px;}
+.bd-gf-item .bd-round{margin-bottom:6px;}
 </style>
 </head>
 <body>
@@ -85,10 +187,10 @@ th{background:#222;}
   <p>Runner-up: ${runnerUpName}</p>
 </div>
 <h2>Teams</h2>
-<table><thead><tr><th>Team</th><th>Players</th></tr></thead><tbody>${teamsRows}</tbody></table>
-${bracketTable("Winners Bracket", wb, state)}
-${bracketTable("Losers Bracket", lb, state)}
-${bracketTable("Grand Final", gf, state)}
+<table><thead><tr><th>Team</th><th>Players</th><th>Record (W:L)</th></tr></thead><tbody>${teamsRows}</tbody></table>
+${bracketDiagram("Winners Bracket", wb, state, records)}
+${bracketDiagram("Losers Bracket", lb, state, records)}
+${grandFinalSection(state, records)}
 <p>Generated ${new Date().toLocaleString()}</p>
 </body>
 </html>`;

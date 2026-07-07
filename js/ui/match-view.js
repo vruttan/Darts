@@ -2,11 +2,18 @@
 // winner, plus a collapsible round-by-round listing of both brackets.
 
 import { el, mount, showConfirm } from "./render.js";
+import { teamRecords } from "../util.js";
 
 function teamLabel(state, teamId) {
   if (teamId == null) return "TBD";
   const t = state.teams.find((team) => team.id === teamId);
   return t ? t.name : "TBD";
+}
+
+function teamDisplay(state, records, teamId) {
+  if (teamId == null) return "TBD";
+  const r = records[teamId] || { wins: 0, losses: 0 };
+  return `${teamLabel(state, teamId)} (${r.wins}:${r.losses})`;
 }
 
 function groupByRound(matches) {
@@ -17,9 +24,14 @@ function groupByRound(matches) {
   return rounds;
 }
 
-function matchRowLabel(state, m) {
-  const a = teamLabel(state, m.teamAId);
-  const b = teamLabel(state, m.teamBId);
+function matchRowLabel(state, records, m) {
+  if (m.isBye) {
+    const knownId = m.teamAId != null ? m.teamAId : m.teamBId;
+    const label = `${teamDisplay(state, records, knownId)} — BYE`;
+    return m.status === "complete" ? label : `${label} (pending)`;
+  }
+  const a = teamDisplay(state, records, m.teamAId);
+  const b = teamDisplay(state, records, m.teamBId);
   if (m.status === "complete") {
     return `${a} vs ${b} — ${teamLabel(state, m.winnerId)} won`;
   }
@@ -28,7 +40,7 @@ function matchRowLabel(state, m) {
   return `${a} vs ${b} (waiting for a board)`;
 }
 
-function renderBracketSection(title, matches, state, openByDefault) {
+function renderBracketSection(title, matches, state, records, openByDefault) {
   if (matches.length === 0) return null;
   const rounds = groupByRound(matches);
   const roundNums = Object.keys(rounds)
@@ -43,7 +55,7 @@ function renderBracketSection(title, matches, state, openByDefault) {
         "div",
         { class: "match-list" },
         rounds[r].map((m) =>
-          el("div", { class: `match-row${m.status === "complete" ? " done" : ""}`, text: matchRowLabel(state, m) })
+          el("div", { class: `match-row${m.status === "complete" ? " done" : ""}`, text: matchRowLabel(state, records, m) })
         )
       )
     );
@@ -72,9 +84,9 @@ function matchContextLabel(m) {
   return m.bracket === "grandfinal" || m.bracket === "grandfinal-reset" ? label : `${label} — Round ${m.round}`;
 }
 
-function renderCompletedCard(state, m) {
-  const aName = teamLabel(state, m.teamAId);
-  const bName = teamLabel(state, m.teamBId);
+function renderCompletedCard(state, records, m) {
+  const aName = teamDisplay(state, records, m.teamAId);
+  const bName = teamDisplay(state, records, m.teamBId);
   return el("div", { class: "board-card complete" }, [
     el("div", { class: "board-label", text: matchContextLabel(m) }),
     el("button", {
@@ -91,7 +103,7 @@ function renderCompletedCard(state, m) {
   ]);
 }
 
-function renderBoardCard(state, app, board) {
+function renderBoardCard(state, records, app, board) {
   if (!board.matchId) {
     return el("div", { class: "board-card idle" }, [
       el("div", { class: "board-label", text: `Board ${board.number}` }),
@@ -102,18 +114,18 @@ function renderBoardCard(state, app, board) {
   const match = state.matches[board.matchId];
   const labelPrefix =
     match.bracket === "grandfinal" ? "Grand Final — " : match.bracket === "grandfinal-reset" ? "Grand Final Reset — " : "";
-  const aName = teamLabel(state, match.teamAId);
-  const bName = teamLabel(state, match.teamBId);
+  const aName = teamDisplay(state, records, match.teamAId);
+  const bName = teamDisplay(state, records, match.teamBId);
 
-  function pickWinner(teamId, teamName) {
-    showConfirm(`${teamName} won?`, () => app.recordResult(match.id, teamId));
+  function pickWinner(teamId) {
+    showConfirm(`${teamLabel(state, teamId)} won?`, () => app.recordResult(match.id, teamId));
   }
 
   return el("div", { class: "board-card" }, [
     el("div", { class: "board-label", text: `${labelPrefix}Board ${board.number}` }),
-    el("button", { class: "team-tap", text: aName, onclick: () => pickWinner(match.teamAId, aName) }),
+    el("button", { class: "team-tap", text: aName, onclick: () => pickWinner(match.teamAId) }),
     el("div", { class: "vs", text: "vs" }),
-    el("button", { class: "team-tap", text: bName, onclick: () => pickWinner(match.teamBId, bName) }),
+    el("button", { class: "team-tap", text: bName, onclick: () => pickWinner(match.teamBId) }),
     match.bracket === "grandfinal-reset"
       ? el("p", { class: "waiting-strip", text: "Bracket reset — the losers-bracket champion won game 1, this match decides the tournament." })
       : null,
@@ -121,10 +133,11 @@ function renderBoardCard(state, app, board) {
 }
 
 export function renderMatchView(root, state, app) {
+  const records = teamRecords(state.matches);
   const boardsGrid = el(
     "div",
     { class: "board-grid" },
-    state.boards.map((board) => renderBoardCard(state, app, board))
+    state.boards.map((board) => renderBoardCard(state, records, app, board))
   );
 
   const allMatches = state.matchOrder.map((id) => state.matches[id]);
@@ -151,13 +164,13 @@ export function renderMatchView(root, state, app) {
           el(
             "div",
             { class: "board-grid" },
-            completedMatches.map((m) => renderCompletedCard(state, m))
+            completedMatches.map((m) => renderCompletedCard(state, records, m))
           ),
         ])
       : null,
-    renderBracketSection("Grand Final", grandFinalMatches, state, true),
-    renderBracketSection("Winners Bracket", wbMatches, state, false),
-    renderBracketSection("Losers Bracket", lbMatches, state, false),
+    renderBracketSection("Grand Final", grandFinalMatches, state, records, true),
+    renderBracketSection("Winners Bracket", wbMatches, state, records, false),
+    renderBracketSection("Losers Bracket", lbMatches, state, records, false),
   ]);
 
   mount(root, screen);
