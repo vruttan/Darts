@@ -3,6 +3,7 @@
 
 import { el, mount, showConfirm } from "./render.js";
 import { teamRecords } from "../util.js";
+import { exportHTML } from "../export.js";
 
 function teamLabel(state, teamId) {
   if (teamId == null) return "TBD";
@@ -154,6 +155,9 @@ export function renderMatchView(root, state, app) {
 
   const screen = el("div", { class: "screen" }, [
     el("h1", { text: "Live Matches" }),
+    el("div", { class: "actions" }, [
+      el("button", { text: "Download HTML Report", onclick: () => exportHTML(state) }),
+    ]),
     boardsGrid,
     waitingCount > 0
       ? el("p", { class: "waiting-strip", text: `${waitingCount} match(es) waiting for a free board.` })
