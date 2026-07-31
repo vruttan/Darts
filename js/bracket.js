@@ -171,7 +171,9 @@ export function generateBracket(teamIds) {
       // Merge round: pair previous LB round's winners against the next WB
       // round's fresh losers. If counts don't match (possible when WB round 1
       // had byes), the excess entrants on either side get a bye through.
-      const fresh = wbLoserSources[nextWbLoserIdx];
+      // Fresh losers are reversed so a team's round-1 opponent's subtree
+      // stays maximally separated, cutting down on early rematches.
+      const fresh = wbLoserSources[nextWbLoserIdx].slice().reverse();
       nextWbLoserIdx += 1;
       const pairCount = Math.min(pool.length, fresh.length);
       for (let i = 0; i < pairCount; i++) {
