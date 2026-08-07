@@ -7,14 +7,14 @@ import { generateBracket } from "./bracket.js";
 import { assignBoards } from "./boards.js";
 
 const STORAGE_KEY = "darts-tournament-state";
-const SCHEMA_VERSION = 1;
+const SCHEMA_VERSION = 2;
 
 export function createInitialState() {
   const now = new Date().toISOString();
   return {
     version: SCHEMA_VERSION,
     phase: "setup", // setup -> teams -> boards -> live -> complete
-    boardCount: 3,
+    boardNames: [],
     players: [],
     teams: [],
     teamsMode: null, // "random" | "manual", set once pairing begins
@@ -51,8 +51,14 @@ export function clear() {
   localStorage.removeItem(STORAGE_KEY);
 }
 
-export function setBoardCount(state, count) {
-  state.boardCount = Math.max(1, Math.min(5, Math.round(count) || 1));
+export function addBoardName(state, name) {
+  const trimmed = (name || "").trim();
+  if (!trimmed) return;
+  state.boardNames.push(trimmed);
+}
+
+export function removeBoardName(state, index) {
+  state.boardNames.splice(index, 1);
 }
 
 // Generates the full bracket graph from the current teams and moves into
@@ -63,7 +69,7 @@ export function startTournament(state) {
   state.matches = bracket.matches;
   state.matchOrder = bracket.matchOrder;
   state.grandFinal = bracket.grandFinal;
-  state.boards = Array.from({ length: state.boardCount }, (_, i) => ({ number: i + 1, matchId: null }));
+  state.boards = state.boardNames.map((name, i) => ({ number: i + 1, name, matchId: null }));
   state.championTeamId = null;
   state.phase = "live";
   assignBoards(state);

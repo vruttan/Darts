@@ -81,7 +81,7 @@ function layoutBracket(matches) {
   return { pos, roundNums, width, height };
 }
 
-function bracketDiagram(title, matches, state, records) {
+export function bracketDiagram(matches, state, records) {
   if (matches.length === 0) return "";
   const { pos, roundNums, width, height } = layoutBracket(matches);
 
@@ -106,14 +106,13 @@ function bracketDiagram(title, matches, state, records) {
     .map((m) => matchCard(state, records, m, `left:${pos.get(m.id).x}px;top:${pos.get(m.id).y}px`))
     .join("");
 
-  return `<h2>${title}</h2>
-<div class="bd-scroll"><div class="bd-canvas" style="width:${width}px;height:${height}px">
+  return `<div class="bd-scroll"><div class="bd-canvas" style="width:${width}px;height:${height}px">
 <svg width="${width}" height="${height}" aria-hidden="true">${paths.join("")}</svg>
 ${headers}${cards}
 </div></div>`;
 }
 
-function grandFinalSection(state, records) {
+export function grandFinalSection(state, records) {
   const gf1 = state.matches[state.grandFinal.game1MatchId];
   const gf2 = state.matches[state.grandFinal.resetMatchId];
   const items = [{ m: gf1, caption: "Game 1" }];
@@ -121,7 +120,7 @@ function grandFinalSection(state, records) {
   const cards = items
     .map(({ m, caption }) => `<div class="bd-gf-item"><div class="bd-round">${caption}</div>${matchCard(state, records, m, "")}</div>`)
     .join("");
-  return `<h2>Grand Final</h2><div class="bd-gf">${cards}</div>`;
+  return `<div class="bd-gf">${cards}</div>`;
 }
 
 export function exportHTML(state) {
@@ -188,8 +187,11 @@ th{background:#222;}
 </div>
 <h2>Teams</h2>
 <table><thead><tr><th>Team</th><th>Players</th><th>Record (W:L)</th></tr></thead><tbody>${teamsRows}</tbody></table>
-${bracketDiagram("Winners Bracket", wb, state, records)}
-${bracketDiagram("Losers Bracket", lb, state, records)}
+<h2>Winners Bracket</h2>
+${bracketDiagram(wb, state, records)}
+<h2>Losers Bracket</h2>
+${bracketDiagram(lb, state, records)}
+<h2>Grand Final</h2>
 ${grandFinalSection(state, records)}
 <p>Generated ${new Date().toLocaleString()}</p>
 </body>

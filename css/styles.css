@@ -34,6 +34,36 @@ body {
   padding: 16px 16px 48px;
 }
 
+.app-header {
+  max-width: 720px;
+  margin: 0 auto;
+  padding: 8px 16px 0;
+  display: flex;
+  align-items: center;
+  gap: 12px;
+}
+
+.logo-badge {
+  background: #fff;
+  border-radius: 8px;
+  padding: 4px 8px;
+  display: inline-flex;
+  align-items: center;
+  flex-shrink: 0;
+}
+
+.logo-badge img {
+  display: block;
+  height: 45px;
+  width: auto;
+}
+
+.app-title {
+  font-size: 1.1rem;
+  margin: 0;
+  line-height: 1.2;
+}
+
 h1, h2, h3 {
   line-height: 1.2;
 }
@@ -168,25 +198,6 @@ button.link {
   padding: 12px;
 }
 
-.stepper {
-  display: flex;
-  align-items: center;
-  gap: 16px;
-  justify-content: center;
-  margin: 12px 0;
-}
-
-.stepper .value {
-  font-size: 2.2rem;
-  min-width: 60px;
-  text-align: center;
-}
-
-.stepper button {
-  font-size: 1.8rem;
-  border-radius: 50%;
-}
-
 .board-grid {
   display: grid;
   grid-template-columns: 1fr;
@@ -220,8 +231,9 @@ button.link {
   display: block;
   width: 100%;
   text-align: left;
-  font-size: 1.15rem;
-  padding: 16px;
+  font-size: 1.5rem;
+  font-weight: 600;
+  padding: 18px;
   margin-top: 8px;
 }
 
@@ -269,25 +281,6 @@ button.link {
   margin: 4px 0;
 }
 
-.match-list {
-  display: flex;
-  flex-direction: column;
-  gap: 6px;
-}
-
-.match-list .match-row {
-  display: flex;
-  justify-content: space-between;
-  padding: 8px 10px;
-  border-radius: 6px;
-  background: var(--panel-alt);
-  font-size: 0.95rem;
-}
-
-.match-row.done {
-  color: var(--muted);
-}
-
 details.bracket-section {
   border: 1px solid var(--border);
   border-radius: 8px;
@@ -300,12 +293,116 @@ details.bracket-section summary {
   padding: 6px 0;
 }
 
-.round-heading {
+.bd-wrap {
+  margin-top: 8px;
+}
+
+.bd-scroll {
+  overflow-x: auto;
+  padding-bottom: 8px;
+}
+
+.bd-canvas {
+  position: relative;
+}
+
+.bd-canvas svg {
+  position: absolute;
+  top: 0;
+  left: 0;
+}
+
+.bd-canvas path {
+  stroke: var(--border);
+  stroke-width: 2;
+  fill: none;
+}
+
+.bd-round {
   color: var(--muted);
-  font-size: 0.85rem;
-  margin: 10px 0 4px;
+  font-size: 12px;
   text-transform: uppercase;
   letter-spacing: 0.05em;
+}
+
+.bd-canvas .bd-round {
+  position: absolute;
+  top: 0;
+  width: 190px;
+}
+
+.bd-canvas .bd-match {
+  position: absolute;
+}
+
+.bd-match {
+  width: 190px;
+  height: 56px;
+  box-sizing: border-box;
+  background: var(--panel-alt);
+  border: 1px solid var(--border);
+  border-radius: 6px;
+  overflow: hidden;
+  display: flex;
+  flex-direction: column;
+}
+
+.bd-team {
+  flex: 1;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+  padding: 0 10px;
+  font-size: 13px;
+  border-left: 3px solid transparent;
+  min-width: 0;
+}
+
+.bd-team + .bd-team {
+  border-top: 1px solid var(--border);
+}
+
+.bd-team.win {
+  border-left-color: var(--accent);
+  font-weight: bold;
+}
+
+.bd-team.win .bd-name::after {
+  content: " \2713";
+  color: var(--accent);
+}
+
+.bd-team.lose .bd-name {
+  color: var(--muted);
+}
+
+.bd-team.bye {
+  color: var(--muted);
+  font-style: italic;
+}
+
+.bd-name {
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.bd-rec {
+  color: var(--muted);
+  font-size: 11px;
+  font-variant-numeric: tabular-nums;
+  flex-shrink: 0;
+}
+
+.bd-gf {
+  display: flex;
+  gap: 24px;
+  flex-wrap: wrap;
+}
+
+.bd-gf-item .bd-round {
+  margin-bottom: 6px;
 }
 
 .champion-banner {

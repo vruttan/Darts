@@ -1,9 +1,10 @@
 // Live match queue screen: one card per board, tap a team name to record the
-// winner, plus a collapsible round-by-round listing of both brackets.
+// winner, plus collapsible graphical bracket diagrams (same rendering as the
+// HTML export) for both brackets and the grand final.
 
 import { el, mount, showConfirm } from "./render.js";
 import { teamRecords } from "../util.js";
-import { exportHTML } from "../export.js";
+import { exportHTML, bracketDiagram, grandFinalSection } from "../export.js";
 
 function teamLabel(state, teamId) {
   if (teamId == null) return "TBD";
@@ -17,52 +18,12 @@ function teamDisplay(state, records, teamId) {
   return `${teamLabel(state, teamId)} (${r.wins}:${r.losses})`;
 }
 
-function groupByRound(matches) {
-  const rounds = {};
-  for (const m of matches) {
-    (rounds[m.round] = rounds[m.round] || []).push(m);
-  }
-  return rounds;
-}
-
-function matchRowLabel(state, records, m) {
-  if (m.isBye) {
-    const knownId = m.teamAId != null ? m.teamAId : m.teamBId;
-    const label = `${teamDisplay(state, records, knownId)} — BYE`;
-    return m.status === "complete" ? label : `${label} (pending)`;
-  }
-  const a = teamDisplay(state, records, m.teamAId);
-  const b = teamDisplay(state, records, m.teamBId);
-  if (m.status === "complete") {
-    return `${a} vs ${b} — ${teamLabel(state, m.winnerId)} won`;
-  }
-  if (m.teamAId == null || m.teamBId == null) return `${a} vs ${b} (pending)`;
-  if (m.status === "in-progress") return `${a} vs ${b} (Board ${m.boardNumber})`;
-  return `${a} vs ${b} (waiting for a board)`;
-}
-
-function renderBracketSection(title, matches, state, records, openByDefault) {
-  if (matches.length === 0) return null;
-  const rounds = groupByRound(matches);
-  const roundNums = Object.keys(rounds)
-    .map(Number)
-    .sort((a, b) => a - b);
-
-  const body = [];
-  for (const r of roundNums) {
-    body.push(el("div", { class: "round-heading", text: `Round ${r}` }));
-    body.push(
-      el(
-        "div",
-        { class: "match-list" },
-        rounds[r].map((m) =>
-          el("div", { class: `match-row${m.status === "complete" ? " done" : ""}`, text: matchRowLabel(state, records, m) })
-        )
-      )
-    );
-  }
-
-  return el("details", { class: "bracket-section", open: openByDefault }, [el("summary", { text: title }), ...body]);
+function renderDiagramSection(title, html, openByDefault) {
+  if (!html) return null;
+  return el("details", { class: "bracket-section", open: openByDefault }, [
+    el("summary", { text: title }),
+    el("div", { class: "bd-wrap", html }),
+  ]);
 }
 
 function bracketLabel(bracket) {
@@ -107,7 +68,7 @@ function renderCompletedCard(state, records, m) {
 function renderBoardCard(state, records, app, board) {
   if (!board.matchId) {
     return el("div", { class: "board-card idle" }, [
-      el("div", { class: "board-label", text: `Board ${board.number}` }),
+      el("div", { class: "board-label", text: board.name }),
       el("p", { text: "Waiting for next match…" }),
     ]);
   }
@@ -123,7 +84,7 @@ function renderBoardCard(state, records, app, board) {
   }
 
   return el("div", { class: "board-card" }, [
-    el("div", { class: "board-label", text: `${labelPrefix}Board ${board.number}` }),
+    el("div", { class: "board-label", text: `${labelPrefix}${board.name}` }),
     el("button", { class: "team-tap", text: aName, onclick: () => pickWinner(match.teamAId) }),
     el("div", { class: "vs", text: "vs" }),
     el("button", { class: "team-tap", text: bName, onclick: () => pickWinner(match.teamBId) }),
@@ -162,6 +123,11 @@ export function renderMatchView(root, state, app) {
     waitingCount > 0
       ? el("p", { class: "waiting-strip", text: `${waitingCount} match(es) waiting for a free board.` })
       : null,
+    renderDiagramSection("Winners Bracket", bracketDiagram(wbMatches, state, records), false),
+    renderDiagramSection("Losers Bracket", bracketDiagram(lbMatches, state, records), false),
+    grandFinalMatches.length > 0
+      ? renderDiagramSection("Grand Final", grandFinalSection(state, records), true)
+      : null,
     completedMatches.length > 0
       ? el("div", { class: "panel" }, [
           el("h2", { text: "Completed Matches" }),
@@ -172,9 +138,6 @@ export function renderMatchView(root, state, app) {
           ),
         ])
       : null,
-    renderBracketSection("Grand Final", grandFinalMatches, state, records, true),
-    renderBracketSection("Winners Bracket", wbMatches, state, records, false),
-    renderBracketSection("Losers Bracket", lbMatches, state, records, false),
   ]);
 
   mount(root, screen);

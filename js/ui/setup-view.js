@@ -33,7 +33,6 @@ export function renderSetupNames(root, state, app) {
   const remaining = Math.max(0, MIN_PLAYERS - state.players.length);
 
   const screen = el("div", { class: "screen" }, [
-    el("h1", { text: "Vince's Darts Tournament" }),
     el("p", { class: "subtitle", text: "Enter every player's name, then pair them into doubles teams." }),
     el("div", { class: "panel" }, [
       el("div", { class: "row" }, [input, el("button", { class: "primary", text: "+", onclick: submit })]),
@@ -168,27 +167,56 @@ export function renderTeamConfirm(root, state, app) {
 }
 
 export function renderBoardCount(root, state, app) {
-  const valueLabel = el("span", { class: "value", text: String(state.boardCount) });
+  const input = el("input", { type: "text", placeholder: "Board name (e.g. Board 2)", id: "board-name-input" });
 
-  function setCount(n) {
-    app.setBoardCount(Math.max(1, Math.min(5, n)));
+  function submit() {
+    if (input.value.trim()) {
+      app.addBoardName(input.value);
+      input.value = "";
+      input.focus();
+    }
   }
+
+  input.addEventListener("keydown", (e) => {
+    if (e.key === "Enter") submit();
+  });
+
+  const chips = el(
+    "div",
+    { class: "chip-list" },
+    state.boardNames.map((name, i) =>
+      el("span", { class: "chip" }, [
+        name,
+        el("button", { text: "×", onclick: () => app.removeBoardName(i) }),
+      ])
+    )
+  );
 
   const screen = el("div", { class: "screen" }, [
     el("h1", { text: "Dart Boards" }),
-    el("p", { class: "subtitle", text: "How many boards are available? Matches will be assigned to boards automatically as they free up." }),
+    el("p", {
+      class: "subtitle",
+      text: "Type in the name of each board you're playing on (e.g. \"Board 2\"). Matches will be assigned to boards automatically as they free up.",
+    }),
     el("div", { class: "panel" }, [
-      el("div", { class: "stepper" }, [
-        el("button", { text: "−", onclick: () => setCount(state.boardCount - 1) }),
-        valueLabel,
-        el("button", { text: "+", onclick: () => setCount(state.boardCount + 1) }),
-      ]),
+      el("div", { class: "row" }, [input, el("button", { class: "primary", text: "+", onclick: submit })]),
+      chips,
+      el("p", {
+        class: "waiting-strip",
+        text: state.boardNames.length === 0 ? "No boards yet." : `${state.boardNames.length} board(s) entered.`,
+      }),
     ]),
     el("div", { class: "actions" }, [
-      el("button", { class: "primary", text: "Start Tournament", onclick: () => app.startTournament() }),
+      el("button", {
+        class: "primary",
+        text: "Start Tournament",
+        disabled: state.boardNames.length === 0,
+        onclick: () => app.startTournament(),
+      }),
       el("button", { class: "link", text: "← Back to Teams", onclick: () => app.backToTeams() }),
     ]),
   ]);
 
   mount(root, screen);
+  input.focus();
 }

@@ -61,8 +61,12 @@ const app = {
     state.phase = "boards";
     persistAndRender();
   },
-  setBoardCount(n) {
-    Store.setBoardCount(state, n);
+  addBoardName(name) {
+    Store.addBoardName(state, name);
+    persistAndRender();
+  },
+  removeBoardName(index) {
+    Store.removeBoardName(state, index);
     persistAndRender();
   },
   startTournament() {
