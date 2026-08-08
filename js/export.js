@@ -2,6 +2,7 @@
 // download. No server involved.
 
 import { teamRecords } from "./util.js";
+import { t, getLanguage } from "./i18n.js";
 
 function downloadBlob(content, filename, mime) {
   const blob = new Blob([content], { type: mime });
@@ -20,8 +21,8 @@ export function exportJSON(state) {
 }
 
 function teamLabel(state, id) {
-  const t = state.teams.find((team) => team.id === id);
-  return t ? t.name : "TBD";
+  const team = state.teams.find((tm) => tm.id === id);
+  return team ? team.name : t("tbd");
 }
 
 function escapeHtml(str) {
@@ -49,7 +50,7 @@ function matchCard(state, records, m, style) {
   let slots;
   if (m.isBye) {
     const knownId = m.teamAId != null ? m.teamAId : m.teamBId;
-    slots = teamSlot(state, records, m, knownId) + `<div class="bd-team bye">BYE</div>`;
+    slots = teamSlot(state, records, m, knownId) + `<div class="bd-team bye">${t("bye")}</div>`;
   } else {
     slots = teamSlot(state, records, m, m.teamAId) + teamSlot(state, records, m, m.teamBId);
   }
@@ -100,7 +101,7 @@ export function bracketDiagram(matches, state, records) {
   }
 
   const headers = roundNums
-    .map((r, col) => `<div class="bd-round" style="left:${col * (BD.cardW + BD.colGap)}px">Round ${r}</div>`)
+    .map((r, col) => `<div class="bd-round" style="left:${col * (BD.cardW + BD.colGap)}px">${t("roundLabel", { n: r })}</div>`)
     .join("");
   const cards = matches
     .map((m) => matchCard(state, records, m, `left:${pos.get(m.id).x}px;top:${pos.get(m.id).y}px`))
@@ -115,8 +116,8 @@ ${headers}${cards}
 export function grandFinalSection(state, records) {
   const gf1 = state.matches[state.grandFinal.game1MatchId];
   const gf2 = state.matches[state.grandFinal.resetMatchId];
-  const items = [{ m: gf1, caption: "Game 1" }];
-  if (gf2.status === "complete") items.push({ m: gf2, caption: "Bracket Reset" });
+  const items = [{ m: gf1, caption: t("game1") }];
+  if (gf2.status === "complete") items.push({ m: gf2, caption: t("bracketResetCaption") });
   const cards = items
     .map(({ m, caption }) => `<div class="bd-gf-item"><div class="bd-round">${caption}</div>${matchCard(state, records, m, "")}</div>`)
     .join("");
@@ -134,12 +135,12 @@ export function exportHTML(state) {
 
   const records = teamRecords(state.matches);
   const teamsRows = state.teams
-    .map((t) => {
-      const names = t.playerIds
+    .map((team) => {
+      const names = team.playerIds
         .map((id) => escapeHtml(state.players.find((p) => p.id === id)?.name || "?"))
         .join(" & ");
-      const r = records[t.id] || { wins: 0, losses: 0 };
-      return `<tr><td>${escapeHtml(t.name)}</td><td>${names}</td><td>${r.wins}:${r.losses}</td></tr>`;
+      const r = records[team.id] || { wins: 0, losses: 0 };
+      return `<tr><td>${escapeHtml(team.name)}</td><td>${names}</td><td>${r.wins}:${r.losses}</td></tr>`;
     })
     .join("");
 
@@ -148,10 +149,10 @@ export function exportHTML(state) {
   const lb = allMatches.filter((m) => m.bracket === "losers");
 
   const html = `<!DOCTYPE html>
-<html>
+<html lang="${getLanguage()}">
 <head>
 <meta charset="UTF-8">
-<title>Darts Tournament Results</title>
+<title>${t("tournamentResultsTitle")}</title>
 <style>
 body{font-family:Arial,sans-serif;background:#111;color:#eee;padding:24px;max-width:960px;margin:0 auto;}
 h1{color:#2e9e5b;}
@@ -180,20 +181,20 @@ th{background:#222;}
 </style>
 </head>
 <body>
-<h1>Darts Tournament Results</h1>
+<h1>${t("tournamentResultsTitle")}</h1>
 <div class="banner">
-  <p>&#127942; Champion: <strong>${championName}</strong></p>
-  <p>Runner-up: ${runnerUpName}</p>
+  <p>&#127942; ${t("championLabel")} <strong>${championName}</strong></p>
+  <p>${t("runnerUpLabel")} ${runnerUpName}</p>
 </div>
-<h2>Teams</h2>
-<table><thead><tr><th>Team</th><th>Players</th><th>Record (W:L)</th></tr></thead><tbody>${teamsRows}</tbody></table>
-<h2>Winners Bracket</h2>
+<h2>${t("teamsHeading")}</h2>
+<table><thead><tr><th>${t("teamHeader")}</th><th>${t("playersHeader")}</th><th>${t("recordHeader")}</th></tr></thead><tbody>${teamsRows}</tbody></table>
+<h2>${t("winnersBracket")}</h2>
 ${bracketDiagram(wb, state, records)}
-<h2>Losers Bracket</h2>
+<h2>${t("losersBracket")}</h2>
 ${bracketDiagram(lb, state, records)}
-<h2>Grand Final</h2>
+<h2>${t("grandFinal")}</h2>
 ${grandFinalSection(state, records)}
-<p>Generated ${new Date().toLocaleString()}</p>
+<p>${t("generatedOn", { date: new Date().toLocaleString(getLanguage() === "es" ? "es-ES" : "en-US") })}</p>
 </body>
 </html>`;
 

@@ -3,6 +3,7 @@
 import * as Store from "./state.js";
 import * as Players from "./players.js";
 import { recordResult } from "./boards.js";
+import * as I18n from "./i18n.js";
 import { renderSetupNames, renderManualPairing, renderTeamConfirm, renderBoardCount } from "./ui/setup-view.js";
 import { renderMatchView } from "./ui/match-view.js";
 import { renderChampionView } from "./ui/champion-view.js";
@@ -115,7 +116,35 @@ function render() {
   }
 }
 
+function wireLanguageToggle() {
+  const enBtn = document.getElementById("lang-en");
+  const esBtn = document.getElementById("lang-es");
+
+  function updateButtons() {
+    const lang = I18n.getLanguage();
+    document.documentElement.lang = lang;
+    enBtn.classList.toggle("active", lang === "en");
+    esBtn.classList.toggle("active", lang === "es");
+    enBtn.setAttribute("aria-pressed", String(lang === "en"));
+    esBtn.setAttribute("aria-pressed", String(lang === "es"));
+  }
+
+  enBtn.addEventListener("click", () => {
+    I18n.setLanguage("en");
+    updateButtons();
+    render();
+  });
+  esBtn.addEventListener("click", () => {
+    I18n.setLanguage("es");
+    updateButtons();
+    render();
+  });
+
+  updateButtons();
+}
+
 render();
+wireLanguageToggle();
 
 if ("serviceWorker" in navigator) {
   window.addEventListener("load", () => {

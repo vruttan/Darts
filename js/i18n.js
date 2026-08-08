@@ -1,0 +1,146 @@
+// English/Spanish translation dictionary + active-language state. The
+// language preference lives in its own localStorage key (not the versioned
+// tournament-state blob in state.js) so it survives "Start New Tournament"
+// and any future schema bump.
+
+const LANG_KEY = "darts-tournament-lang";
+
+const STRINGS = {
+  en: {
+    playerNamePlaceholder: "Player name",
+    setupSubtitle: "Enter every player's name, then pair them into doubles teams.",
+    noPlayersYet: "No players yet.",
+    playersEnteredRemaining: "{count} player(s) entered — add {remaining} more (minimum {min}).",
+    playersEntered: "{count} player(s) entered.",
+    randomPairing: "Random Pairing",
+    manualPairing: "Manual Pairing",
+    allPlayersPaired: "All players paired.",
+    sitOutSingle: "{name} will sit out (only one player left).",
+    tapPlayerInstruction: "Tap a player, then tap their partner to form a team.",
+    tapPartner: "Tap {name}'s partner.",
+    unpairedCount: "Unpaired ({count})",
+    undo: "Undo",
+    teamsFormedCount: "{count} Team(s) Formed",
+    backToPlayers: "← Back to Players",
+    sitsOutTournament: "{name} sits out this tournament (odd number of players).",
+    chooseDifferentSitOut: "Choose a different player to sit out…",
+    confirmTeamsTitle: "Confirm Teams",
+    teamsCount: "{count} Teams",
+    editPairing: "Edit Pairing",
+    reshuffleTeams: "Re-shuffle Teams",
+    dartBoardsTitle: "Dart Boards",
+    boardNamePlaceholder: "Board name (e.g. Board 2)",
+    boardsSubtitle: 'Type in the name of each board you\'re playing on (e.g. "Board 2"). Matches will be assigned to boards automatically as they free up.',
+    noBoardsYet: "No boards yet.",
+    boardsEntered: "{count} board(s) entered.",
+    startTournament: "Start Tournament",
+    backToTeams: "← Back to Teams",
+    tbd: "TBD",
+    winnersBracket: "Winners Bracket",
+    losersBracket: "Losers Bracket",
+    grandFinal: "Grand Final",
+    grandFinalReset: "Grand Final Reset",
+    roundLabel: "Round {n}",
+    vs: "vs",
+    waitingForNextMatch: "Waiting for next match…",
+    confirmWinner: "{name} won?",
+    bracketResetNotice: "Bracket reset — the losers-bracket champion won game 1, this match decides the tournament.",
+    liveMatches: "Live Matches",
+    downloadHtmlReport: "Download HTML Report",
+    matchesWaiting: "{count} match(es) waiting for a free board.",
+    completedMatches: "Completed Matches",
+    runnerUpLabel: "Runner-up:",
+    downloadJsonData: "Download JSON Data",
+    startNewTournament: "Start New Tournament",
+    confirmNewTournament: "Start a new tournament? This clears the current results.",
+    cancel: "Cancel",
+    confirm: "Confirm",
+    tournamentResultsTitle: "Darts Tournament Results",
+    championLabel: "Champion:",
+    teamsHeading: "Teams",
+    teamHeader: "Team",
+    playersHeader: "Players",
+    recordHeader: "Record (W:L)",
+    generatedOn: "Generated {date}",
+    bye: "BYE",
+    game1: "Game 1",
+    bracketResetCaption: "Bracket Reset",
+  },
+  es: {
+    playerNamePlaceholder: "Nombre del jugador",
+    setupSubtitle: "Introduce el nombre de cada jugador y luego forma los equipos de dobles.",
+    noPlayersYet: "Todavía no hay jugadores.",
+    playersEnteredRemaining: "{count} jugador(es) agregado(s) — añade {remaining} más (mínimo {min}).",
+    playersEntered: "{count} jugador(es) agregado(s).",
+    randomPairing: "Emparejamiento Aleatorio",
+    manualPairing: "Emparejamiento Manual",
+    allPlayersPaired: "Todos los jugadores están emparejados.",
+    sitOutSingle: "{name} se queda fuera (solo queda un jugador).",
+    tapPlayerInstruction: "Toca un jugador y luego a su compañero para formar un equipo.",
+    tapPartner: "Toca al compañero de {name}.",
+    unpairedCount: "Sin emparejar ({count})",
+    undo: "Deshacer",
+    teamsFormedCount: "{count} Equipo(s) Formado(s)",
+    backToPlayers: "← Volver a Jugadores",
+    sitsOutTournament: "{name} se queda fuera de este torneo (número impar de jugadores).",
+    chooseDifferentSitOut: "Elige a otro jugador para que se quede fuera…",
+    confirmTeamsTitle: "Confirmar Equipos",
+    teamsCount: "{count} Equipos",
+    editPairing: "Editar Emparejamiento",
+    reshuffleTeams: "Reordenar Equipos",
+    dartBoardsTitle: "Dianas de Dardos",
+    boardNamePlaceholder: "Nombre de la diana (ej. Diana 2)",
+    boardsSubtitle: 'Escribe el nombre de cada diana en la que vais a jugar (ej. "Diana 2"). Las partidas se asignarán automáticamente a las dianas a medida que queden libres.',
+    noBoardsYet: "Todavía no hay dianas.",
+    boardsEntered: "{count} diana(s) agregada(s).",
+    startTournament: "Iniciar Torneo",
+    backToTeams: "← Volver a Equipos",
+    tbd: "Por definir",
+    winnersBracket: "Llave de Ganadores",
+    losersBracket: "Llave de Perdedores",
+    grandFinal: "Gran Final",
+    grandFinalReset: "Reinicio de la Gran Final",
+    roundLabel: "Ronda {n}",
+    vs: "vs",
+    waitingForNextMatch: "Esperando la próxima partida…",
+    confirmWinner: "¿Ganó {name}?",
+    bracketResetNotice: "Reinicio de llave — el campeón de la llave de perdedores ganó la partida 1, esta partida decide el torneo.",
+    liveMatches: "Partidas en Vivo",
+    downloadHtmlReport: "Descargar Informe HTML",
+    matchesWaiting: "{count} partida(s) esperando una diana libre.",
+    completedMatches: "Partidas Completadas",
+    runnerUpLabel: "Subcampeón:",
+    downloadJsonData: "Descargar Datos JSON",
+    startNewTournament: "Iniciar Nuevo Torneo",
+    confirmNewTournament: "¿Iniciar un nuevo torneo? Esto borrará los resultados actuales.",
+    cancel: "Cancelar",
+    confirm: "Confirmar",
+    tournamentResultsTitle: "Resultados del Torneo de Dardos",
+    championLabel: "Campeón:",
+    teamsHeading: "Equipos",
+    teamHeader: "Equipo",
+    playersHeader: "Jugadores",
+    recordHeader: "Récord (G:P)",
+    generatedOn: "Generado el {date}",
+    bye: "DESCANSO",
+    game1: "Partida 1",
+    bracketResetCaption: "Reinicio de Llave",
+  },
+};
+
+let currentLang = localStorage.getItem(LANG_KEY) === "es" ? "es" : "en";
+
+export function getLanguage() {
+  return currentLang;
+}
+
+export function setLanguage(lang) {
+  currentLang = lang === "es" ? "es" : "en";
+  localStorage.setItem(LANG_KEY, currentLang);
+}
+
+export function t(key, vars) {
+  const str = STRINGS[currentLang][key] ?? STRINGS.en[key] ?? key;
+  if (!vars) return str;
+  return str.replace(/\{(\w+)\}/g, (match, name) => (name in vars ? vars[name] : match));
+}

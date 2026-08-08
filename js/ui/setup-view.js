@@ -1,11 +1,12 @@
 // Setup phase screens: name entry -> team confirmation -> board count.
 
 import { el, mount } from "./render.js";
+import { t } from "../i18n.js";
 
 const MIN_PLAYERS = 4;
 
 export function renderSetupNames(root, state, app) {
-  const input = el("input", { type: "text", placeholder: "Player name", id: "player-name-input" });
+  const input = el("input", { type: "text", placeholder: t("playerNamePlaceholder"), id: "player-name-input" });
 
   function submit() {
     if (input.value.trim()) {
@@ -33,7 +34,7 @@ export function renderSetupNames(root, state, app) {
   const remaining = Math.max(0, MIN_PLAYERS - state.players.length);
 
   const screen = el("div", { class: "screen" }, [
-    el("p", { class: "subtitle", text: "Enter every player's name, then pair them into doubles teams." }),
+    el("p", { class: "subtitle", text: t("setupSubtitle") }),
     el("div", { class: "panel" }, [
       el("div", { class: "row" }, [input, el("button", { class: "primary", text: "+", onclick: submit })]),
       chips,
@@ -41,21 +42,21 @@ export function renderSetupNames(root, state, app) {
         class: "waiting-strip",
         text:
           state.players.length === 0
-            ? "No players yet."
+            ? t("noPlayersYet")
             : remaining > 0
-              ? `${state.players.length} player(s) entered — add ${remaining} more (minimum ${MIN_PLAYERS}).`
-              : `${state.players.length} player(s) entered.`,
+              ? t("playersEnteredRemaining", { count: state.players.length, remaining, min: MIN_PLAYERS })
+              : t("playersEntered", { count: state.players.length }),
       }),
     ]),
     el("div", { class: "actions" }, [
       el("button", {
         class: "primary",
-        text: "Random Pairing",
+        text: t("randomPairing"),
         disabled: state.players.length < MIN_PLAYERS,
         onclick: () => app.goToTeams(),
       }),
       el("button", {
-        text: "Manual Pairing",
+        text: t("manualPairing"),
         disabled: state.players.length < MIN_PLAYERS,
         onclick: () => app.goToManualTeams(),
       }),
@@ -82,37 +83,37 @@ export function renderManualPairing(root, state, app) {
     })
   );
 
-  const teamRows = state.teams.map((t) =>
+  const teamRows = state.teams.map((team) =>
     el("div", { class: "team-card row" }, [
-      el("span", { text: t.name }),
-      el("button", { class: "link", text: "Undo", onclick: () => app.undoManualTeam(t.id) }),
+      el("span", { text: team.name }),
+      el("button", { class: "link", text: t("undo"), onclick: () => app.undoManualTeam(team.id) }),
     ])
   );
 
   const helperText =
     mp.unpairedIds.length === 0
-      ? "All players paired."
+      ? t("allPlayersPaired")
       : mp.unpairedIds.length === 1
-        ? `${state.players.find((p) => p.id === mp.unpairedIds[0]).name} will sit out (only one player left).`
+        ? t("sitOutSingle", { name: state.players.find((p) => p.id === mp.unpairedIds[0]).name })
         : mp.selectedId == null
-          ? "Tap a player, then tap their partner to form a team."
-          : `Tap ${state.players.find((p) => p.id === mp.selectedId).name}'s partner.`;
+          ? t("tapPlayerInstruction")
+          : t("tapPartner", { name: state.players.find((p) => p.id === mp.selectedId).name });
 
   const screen = el("div", { class: "screen" }, [
-    el("h1", { text: "Manual Pairing" }),
+    el("h1", { text: t("manualPairing") }),
     el("p", { class: "subtitle", text: helperText }),
     el("div", { class: "panel" }, [
-      el("h2", { text: `Unpaired (${mp.unpairedIds.length})` }),
+      el("h2", { text: t("unpairedCount", { count: mp.unpairedIds.length }) }),
       unpairedChips,
     ]),
     state.teams.length > 0
       ? el("div", { class: "panel" }, [
-          el("h2", { text: `${state.teams.length} Team(s) Formed` }),
+          el("h2", { text: t("teamsFormedCount", { count: state.teams.length }) }),
           el("div", { class: "chip-list", style: "flex-direction:column;align-items:stretch;" }, teamRows),
         ])
       : null,
     el("div", { class: "actions" }, [
-      el("button", { class: "link", text: "← Back to Players", onclick: () => app.backToSetup() }),
+      el("button", { class: "link", text: t("backToPlayers"), onclick: () => app.backToSetup() }),
     ]),
   ]);
 
@@ -124,7 +125,7 @@ export function renderTeamConfirm(root, state, app) {
 
   const banner = sitOut
     ? el("div", { class: "banner" }, [
-      el("p", { text: `${sitOut.name} sits out this tournament (odd number of players).` }),
+      el("p", { text: t("sitsOutTournament", { name: sitOut.name }) }),
       el(
         "select",
         {
@@ -133,7 +134,7 @@ export function renderTeamConfirm(root, state, app) {
           },
         },
         [
-          el("option", { value: "", text: "Choose a different player to sit out…" }),
+          el("option", { value: "", text: t("chooseDifferentSitOut") }),
           ...state.players
             .filter((p) => !p.sittingOut)
             .map((p) => el("option", { value: p.id, text: p.name })),
@@ -142,24 +143,24 @@ export function renderTeamConfirm(root, state, app) {
     ])
     : null;
 
-  const teamCards = state.teams.map((t) => el("div", { class: "team-card", text: t.name }));
+  const teamCards = state.teams.map((team) => el("div", { class: "team-card", text: team.name }));
 
   const redoButton =
     state.teamsMode === "manual"
-      ? el("button", { text: "Edit Pairing", onclick: () => app.editManualPairing() })
-      : el("button", { text: "Re-shuffle Teams", onclick: () => app.reshuffleTeams() });
+      ? el("button", { text: t("editPairing"), onclick: () => app.editManualPairing() })
+      : el("button", { text: t("reshuffleTeams"), onclick: () => app.reshuffleTeams() });
 
   const screen = el("div", { class: "screen" }, [
-    el("h1", { text: "Confirm Teams" }),
+    el("h1", { text: t("confirmTeamsTitle") }),
     banner,
     el("div", { class: "panel" }, [
-      el("h2", { text: `${state.teams.length} Teams` }),
+      el("h2", { text: t("teamsCount", { count: state.teams.length }) }),
       el("div", { class: "chip-list", style: "flex-direction:column;align-items:stretch;" }, teamCards),
     ]),
     el("div", { class: "actions" }, [
       redoButton,
-      el("button", { class: "primary", text: "Confirm Teams", onclick: () => app.confirmTeams() }),
-      el("button", { class: "link", text: "← Back to Players", onclick: () => app.backToSetup() }),
+      el("button", { class: "primary", text: t("confirmTeamsTitle"), onclick: () => app.confirmTeams() }),
+      el("button", { class: "link", text: t("backToPlayers"), onclick: () => app.backToSetup() }),
     ]),
   ]);
 
@@ -167,7 +168,7 @@ export function renderTeamConfirm(root, state, app) {
 }
 
 export function renderBoardCount(root, state, app) {
-  const input = el("input", { type: "text", placeholder: "Board name (e.g. Board 2)", id: "board-name-input" });
+  const input = el("input", { type: "text", placeholder: t("boardNamePlaceholder"), id: "board-name-input" });
 
   function submit() {
     if (input.value.trim()) {
@@ -193,27 +194,27 @@ export function renderBoardCount(root, state, app) {
   );
 
   const screen = el("div", { class: "screen" }, [
-    el("h1", { text: "Dart Boards" }),
+    el("h1", { text: t("dartBoardsTitle") }),
     el("p", {
       class: "subtitle",
-      text: "Type in the name of each board you're playing on (e.g. \"Board 2\"). Matches will be assigned to boards automatically as they free up.",
+      text: t("boardsSubtitle"),
     }),
     el("div", { class: "panel" }, [
       el("div", { class: "row" }, [input, el("button", { class: "primary", text: "+", onclick: submit })]),
       chips,
       el("p", {
         class: "waiting-strip",
-        text: state.boardNames.length === 0 ? "No boards yet." : `${state.boardNames.length} board(s) entered.`,
+        text: state.boardNames.length === 0 ? t("noBoardsYet") : t("boardsEntered", { count: state.boardNames.length }),
       }),
     ]),
     el("div", { class: "actions" }, [
       el("button", {
         class: "primary",
-        text: "Start Tournament",
+        text: t("startTournament"),
         disabled: state.boardNames.length === 0,
         onclick: () => app.startTournament(),
       }),
-      el("button", { class: "link", text: "← Back to Teams", onclick: () => app.backToTeams() }),
+      el("button", { class: "link", text: t("backToTeams"), onclick: () => app.backToTeams() }),
     ]),
   ]);
 

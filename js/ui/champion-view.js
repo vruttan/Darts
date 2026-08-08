@@ -2,10 +2,11 @@
 
 import { el, mount, showConfirm } from "./render.js";
 import { exportHTML, exportJSON } from "../export.js";
+import { t } from "../i18n.js";
 
 function teamLabel(state, id) {
-  const t = state.teams.find((team) => team.id === id);
-  return t ? t.name : "TBD";
+  const team = state.teams.find((tm) => tm.id === id);
+  return team ? team.name : t("tbd");
 }
 
 export function renderChampionView(root, state, app) {
@@ -18,16 +19,16 @@ export function renderChampionView(root, state, app) {
     el("div", { class: "champion-banner" }, [
       el("div", { class: "trophy", text: "🏆" }),
       el("h2", { text: teamLabel(state, state.championTeamId) }),
-      el("p", { text: `Runner-up: ${teamLabel(state, runnerUpId)}` }),
+      el("p", { text: `${t("runnerUpLabel")} ${teamLabel(state, runnerUpId)}` }),
     ]),
     el("div", { class: "actions" }, [
-      el("button", { class: "primary", text: "Download HTML Report", onclick: () => exportHTML(state) }),
-      el("button", { text: "Download JSON Data", onclick: () => exportJSON(state) }),
+      el("button", { class: "primary", text: t("downloadHtmlReport"), onclick: () => exportHTML(state) }),
+      el("button", { text: t("downloadJsonData"), onclick: () => exportJSON(state) }),
       el("button", {
         class: "danger",
-        text: "Start New Tournament",
+        text: t("startNewTournament"),
         onclick: () => {
-          showConfirm("Start a new tournament? This clears the current results.", () => app.startNewTournament());
+          showConfirm(t("confirmNewTournament"), () => app.startNewTournament());
         },
       }),
     ]),

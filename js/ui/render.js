@@ -1,5 +1,7 @@
 // Small, framework-free DOM helper functions shared by every screen.
 
+import { t } from "../i18n.js";
+
 export function el(tag, attrs = {}, children = []) {
   const node = document.createElement(tag);
   for (const [key, value] of Object.entries(attrs)) {
@@ -39,10 +41,10 @@ export function showConfirm(message, onConfirm) {
     el("div", { class: "modal-dialog" }, [
       el("p", { text: message }),
       el("div", { class: "actions row-actions" }, [
-        el("button", { class: "secondary", text: "Cancel", onclick: () => overlay.remove() }),
+        el("button", { class: "secondary", text: t("cancel"), onclick: () => overlay.remove() }),
         el("button", {
           class: "primary",
-          text: "Confirm",
+          text: t("confirm"),
           onclick: () => {
             overlay.remove();
             onConfirm();
