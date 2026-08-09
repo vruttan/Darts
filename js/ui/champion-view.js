@@ -1,12 +1,21 @@
-// Champion screen: winner/runner-up banner + export/start-over actions.
+// Champion screen: winner/runner-up banner + expanded brackets + start-over action.
 
 import { el, mount, showConfirm } from "./render.js";
-import { exportHTML, exportJSON } from "../export.js";
+import { teamRecords } from "../util.js";
+import { bracketDiagram } from "../export.js";
 import { t } from "../i18n.js";
 
 function teamLabel(state, id) {
   const team = state.teams.find((tm) => tm.id === id);
   return team ? team.name : t("tbd");
+}
+
+function renderDiagramSection(title, html) {
+  if (!html) return null;
+  return el("details", { class: "bracket-section", open: true }, [
+    el("summary", { text: title }),
+    el("div", { class: "bd-wrap", html }),
+  ]);
 }
 
 export function renderChampionView(root, state, app) {
@@ -15,6 +24,11 @@ export function renderChampionView(root, state, app) {
   const decisive = gf2.status === "complete" ? gf2 : gf1;
   const runnerUpId = decisive.loserId;
 
+  const records = teamRecords(state.matches);
+  const allMatches = state.matchOrder.map((id) => state.matches[id]);
+  const wbMatches = allMatches.filter((m) => m.bracket === "winners");
+  const lbMatches = allMatches.filter((m) => m.bracket === "losers");
+
   const screen = el("div", { class: "screen" }, [
     el("div", { class: "champion-banner" }, [
       el("div", { class: "trophy", text: "🏆" }),
@@ -22,8 +36,6 @@ export function renderChampionView(root, state, app) {
       el("p", { text: `${t("runnerUpLabel")} ${teamLabel(state, runnerUpId)}` }),
     ]),
     el("div", { class: "actions" }, [
-      el("button", { class: "primary", text: t("downloadHtmlReport"), onclick: () => exportHTML(state) }),
-      el("button", { text: t("downloadJsonData"), onclick: () => exportJSON(state) }),
       el("button", {
         class: "danger",
         text: t("startNewTournament"),
@@ -32,6 +44,8 @@ export function renderChampionView(root, state, app) {
         },
       }),
     ]),
+    renderDiagramSection(t("winnersBracket"), bracketDiagram(wbMatches, state, records)),
+    renderDiagramSection(t("losersBracket"), bracketDiagram(lbMatches, state, records)),
   ]);
 
   mount(root, screen);
