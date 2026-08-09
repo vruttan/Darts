@@ -280,6 +280,19 @@ button.link {
   cursor: not-allowed;
 }
 
+.team-tap.editable {
+  opacity: 1;
+  outline: 2px dashed var(--danger);
+  outline-offset: -2px;
+  cursor: pointer;
+}
+
+.completed-hint {
+  color: var(--muted);
+  font-size: 0.8rem;
+  margin: 6px 0 0;
+}
+
 .chip-select {
   min-height: auto;
   border-radius: 999px;

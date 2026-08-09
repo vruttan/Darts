@@ -2,7 +2,7 @@
 
 import * as Store from "./state.js";
 import * as Players from "./players.js";
-import { recordResult } from "./boards.js";
+import { recordResult, simulateEditResult, editResult } from "./boards.js";
 import * as I18n from "./i18n.js";
 import { renderSetupNames, renderManualPairing, renderTeamConfirm, renderBoardCount } from "./ui/setup-view.js";
 import { renderMatchView } from "./ui/match-view.js";
@@ -78,6 +78,13 @@ const app = {
     recordResult(state, matchId, winnerId);
     persistAndRender();
   },
+  previewEditResult(matchId, newWinnerId) {
+    return simulateEditResult(state, matchId, newWinnerId).reopenedMatchIds;
+  },
+  editResult(matchId, newWinnerId) {
+    editResult(state, matchId, newWinnerId);
+    persistAndRender();
+  },
   startNewTournament() {
     state = Store.resetTournament();
     persistAndRender();
@@ -148,8 +155,32 @@ wireLanguageToggle();
 
 if ("serviceWorker" in navigator) {
   window.addEventListener("load", () => {
-    navigator.serviceWorker.register("./service-worker.js").catch(() => {
-      // Offline install just won't be available; the app still works online.
-    });
+    navigator.serviceWorker
+      .register("./service-worker.js")
+      .then((registration) => {
+        // The SW self-activates new versions immediately (skipWaiting +
+        // clients.claim), but an already-open tab keeps running the JS it
+        // already loaded until it reloads. Reload once, automatically, the
+        // moment a new version takes over — this is the only way to pick up
+        // an update on Android, where there's no hard-refresh gesture.
+        let reloading = false;
+        navigator.serviceWorker.addEventListener("controllerchange", () => {
+          if (reloading) return;
+          reloading = true;
+          window.location.reload();
+        });
+
+        // Browsers only re-check service-worker.js for changes on
+        // navigation (and even then, at most once a day by spec). A
+        // dart tournament can keep this tab open for hours, so also check
+        // whenever the tab regains focus — that's when a stale version is
+        // most likely to matter.
+        document.addEventListener("visibilitychange", () => {
+          if (document.visibilityState === "visible") registration.update();
+        });
+      })
+      .catch(() => {
+        // Offline install just won't be available; the app still works online.
+      });
   });
 }

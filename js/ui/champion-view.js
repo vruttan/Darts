@@ -3,6 +3,7 @@
 import { el, mount, showConfirm } from "./render.js";
 import { teamRecords } from "../util.js";
 import { bracketDiagram } from "../export.js";
+import { renderCompletedPanel } from "./completed-matches.js";
 import { t } from "../i18n.js";
 
 function teamLabel(state, id) {
@@ -29,6 +30,12 @@ export function renderChampionView(root, state, app) {
   const wbMatches = allMatches.filter((m) => m.bracket === "winners");
   const lbMatches = allMatches.filter((m) => m.bracket === "losers");
 
+  const completedMatches = (state.completedMatchIds || [])
+    .slice()
+    .reverse()
+    .map((id) => state.matches[id])
+    .filter(Boolean);
+
   const screen = el("div", { class: "screen" }, [
     el("div", { class: "champion-banner" }, [
       el("div", { class: "trophy", text: "🏆" }),
@@ -46,6 +53,7 @@ export function renderChampionView(root, state, app) {
     ]),
     renderDiagramSection(t("winnersBracket"), bracketDiagram(wbMatches, state, records)),
     renderDiagramSection(t("losersBracket"), bracketDiagram(lbMatches, state, records)),
+    renderCompletedPanel(state, records, app, completedMatches),
   ]);
 
   mount(root, screen);

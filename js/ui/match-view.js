@@ -5,6 +5,7 @@
 import { el, mount, showConfirm } from "./render.js";
 import { teamRecords } from "../util.js";
 import { exportHTML, bracketDiagram, grandFinalSection } from "../export.js";
+import { renderCompletedPanel } from "./completed-matches.js";
 import { t } from "../i18n.js";
 
 function teamLabel(state, teamId) {
@@ -24,45 +25,6 @@ function renderDiagramSection(title, html, openByDefault) {
   return el("details", { class: "bracket-section", open: openByDefault }, [
     el("summary", { text: title }),
     el("div", { class: "bd-wrap", html }),
-  ]);
-}
-
-function bracketLabel(bracket) {
-  switch (bracket) {
-    case "winners":
-      return t("winnersBracket");
-    case "losers":
-      return t("losersBracket");
-    case "grandfinal":
-      return t("grandFinal");
-    case "grandfinal-reset":
-      return t("grandFinalReset");
-    default:
-      return bracket;
-  }
-}
-
-function matchContextLabel(m) {
-  const label = bracketLabel(m.bracket);
-  return m.bracket === "grandfinal" || m.bracket === "grandfinal-reset" ? label : `${label} — ${t("roundLabel", { n: m.round })}`;
-}
-
-function renderCompletedCard(state, records, m) {
-  const aName = teamDisplay(state, records, m.teamAId);
-  const bName = teamDisplay(state, records, m.teamBId);
-  return el("div", { class: "board-card complete" }, [
-    el("div", { class: "board-label", text: matchContextLabel(m) }),
-    el("button", {
-      class: `team-tap ${m.winnerId === m.teamAId ? "winner" : "loser"}`,
-      text: aName,
-      disabled: true,
-    }),
-    el("div", { class: "vs", text: t("vs") }),
-    el("button", {
-      class: `team-tap ${m.winnerId === m.teamBId ? "winner" : "loser"}`,
-      text: bName,
-      disabled: true,
-    }),
   ]);
 }
 
@@ -117,9 +79,6 @@ export function renderMatchView(root, state, app) {
 
   const screen = el("div", { class: "screen" }, [
     el("h1", { text: t("liveMatches") }),
-    el("div", { class: "actions" }, [
-      el("button", { text: t("downloadHtmlReport"), onclick: () => exportHTML(state) }),
-    ]),
     boardsGrid,
     waitingCount > 0
       ? el("p", { class: "waiting-strip", text: t("matchesWaiting", { count: waitingCount }) })
@@ -129,16 +88,10 @@ export function renderMatchView(root, state, app) {
     grandFinalMatches.length > 0
       ? renderDiagramSection(t("grandFinal"), grandFinalSection(state, records), true)
       : null,
-    completedMatches.length > 0
-      ? el("div", { class: "panel" }, [
-          el("h2", { text: t("completedMatches") }),
-          el(
-            "div",
-            { class: "board-grid" },
-            completedMatches.map((m) => renderCompletedCard(state, records, m))
-          ),
-        ])
-      : null,
+    renderCompletedPanel(state, records, app, completedMatches),
+    el("div", { class: "actions" }, [
+      el("button", { text: t("downloadHtmlReport"), onclick: () => exportHTML(state) }),
+    ]),
   ]);
 
   mount(root, screen);
