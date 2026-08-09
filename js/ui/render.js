@@ -41,19 +41,31 @@ export function mount(root, node) {
 // confirm/cancel actions.
 export function showConfirm(message, onConfirm) {
   const lines = [].concat(message);
+  // The overlay itself just scrolls (it does not center anything directly);
+  // centering happens on the inner wrapper instead, which is at least as
+  // tall as the overlay but free to grow beyond it. That split matters: a
+  // flex container that centers a child taller than itself pushes half the
+  // overflow *above* its own top edge, and that portion falls outside any
+  // scrollable area and becomes permanently unreachable — the bug behind a
+  // long dialog's Confirm button being impossible to reach on a phone
+  // screen. Because the inner wrapper's height always matches its content,
+  // centering inside it is never fighting an overflow, so nothing is ever
+  // pushed out of scroll range.
   const overlay = el("div", { class: "modal-overlay" }, [
-    el("div", { class: "modal-dialog" }, [
-      ...lines.map((line) => el("p", { text: line })),
-      el("div", { class: "actions row-actions" }, [
-        el("button", { class: "secondary", text: t("cancel"), onclick: () => overlay.remove() }),
-        el("button", {
-          class: "primary",
-          text: t("confirm"),
-          onclick: () => {
-            overlay.remove();
-            onConfirm();
-          },
-        }),
+    el("div", { class: "modal-overlay-inner" }, [
+      el("div", { class: "modal-dialog" }, [
+        ...lines.map((line) => el("p", { text: line })),
+        el("div", { class: "actions row-actions" }, [
+          el("button", { class: "secondary", text: t("cancel"), onclick: () => overlay.remove() }),
+          el("button", {
+            class: "primary",
+            text: t("confirm"),
+            onclick: () => {
+              overlay.remove();
+              onConfirm();
+            },
+          }),
+        ]),
       ]),
     ]),
   ]);

@@ -483,11 +483,26 @@ details.bracket-section summary {
   position: fixed;
   inset: 0;
   background: rgba(0, 0, 0, 0.6);
+  overflow-y: auto;
+  z-index: 100;
+}
+
+/* Centering lives here, one level in from the scrollable overlay, and is
+   always exactly as tall as its content (min-height, not height). A flex
+   container that centers a child *taller than itself* pushes half the
+   overflow above its own top edge, and that part falls outside any
+   scrollable area and becomes permanently unreachable — the bug behind a
+   long confirm dialog's button being impossible to reach on a phone. Since
+   this wrapper's cross size always matches the dialog when the dialog is
+   the taller of the two, centering here never fights an overflow, so nothing
+   is ever pushed out of scroll range; short dialogs still land centered
+   because min-height guarantees at least a full screen to center within. */
+.modal-overlay-inner {
+  min-height: 100%;
   display: flex;
   align-items: center;
   justify-content: center;
   padding: 16px;
-  z-index: 100;
 }
 
 .modal-dialog {
