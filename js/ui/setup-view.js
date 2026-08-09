@@ -33,6 +33,30 @@ export function renderSetupNames(root, state, app) {
 
   const remaining = Math.max(0, MIN_PLAYERS - state.players.length);
 
+  const updateStatus = el("p", { class: "waiting-strip" });
+  const updateButton = el("button", {
+    text: t("getLatestVersion"),
+    onclick: async () => {
+      updateButton.disabled = true;
+      updateStatus.textContent = t("checkingForUpdate");
+      const result = await app.checkForUpdate();
+      switch (result) {
+        case "updating":
+          // The new version self-activates and the page reloads on its own
+          // shortly; leave the button disabled so it isn't tapped again.
+          updateStatus.textContent = t("updatingNotice");
+          break;
+        case "up-to-date":
+          updateStatus.textContent = t("upToDate");
+          updateButton.disabled = false;
+          break;
+        default:
+          updateStatus.textContent = t("updateCheckFailed");
+          updateButton.disabled = false;
+      }
+    },
+  });
+
   const screen = el("div", { class: "screen" }, [
     el("p", { class: "subtitle", text: t("setupSubtitle") }),
     el("div", { class: "panel" }, [
@@ -60,7 +84,9 @@ export function renderSetupNames(root, state, app) {
         disabled: state.players.length < MIN_PLAYERS,
         onclick: () => app.goToManualTeams(),
       }),
+      updateButton,
     ]),
+    updateStatus,
   ]);
 
   mount(root, screen);

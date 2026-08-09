@@ -11,6 +11,7 @@ import { renderChampionView } from "./ui/champion-view.js";
 const root = document.getElementById("app");
 
 let state = Store.load() || Store.createInitialState();
+let swRegistration = null;
 
 function persistAndRender() {
   Store.save(state);
@@ -97,6 +98,22 @@ const app = {
     state.phase = "teams";
     persistAndRender();
   },
+  // Manually forces the same update check the app already runs on its own
+  // whenever the tab regains focus (see the service worker registration
+  // below) — for someone who wants to confirm right now rather than wait.
+  // Doesn't touch `state`: if a new version is found, it self-activates and
+  // the controllerchange listener below reloads the page automatically.
+  async checkForUpdate() {
+    if (!("serviceWorker" in navigator)) return "unsupported";
+    const registration = swRegistration || (await navigator.serviceWorker.getRegistration());
+    if (!registration) return "unsupported";
+    try {
+      await registration.update();
+    } catch {
+      return "offline";
+    }
+    return registration.installing || registration.waiting ? "updating" : "up-to-date";
+  },
 };
 
 function render() {
@@ -158,6 +175,8 @@ if ("serviceWorker" in navigator) {
     navigator.serviceWorker
       .register("./service-worker.js")
       .then((registration) => {
+        swRegistration = registration;
+
         // The SW self-activates new versions immediately (skipWaiting +
         // clients.claim), but an already-open tab keeps running the JS it
         // already loaded until it reloads. Reload once, automatically, the
