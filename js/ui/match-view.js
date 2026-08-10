@@ -77,17 +77,24 @@ export function renderMatchView(root, state, app) {
     .map((id) => state.matches[id])
     .filter(Boolean);
 
-  const screen = el("div", { class: "screen" }, [
-    el("h1", { text: t("liveMatches") }),
+  const liveLeft = el("div", { class: "live-left" }, [
     boardsGrid,
     waitingCount > 0
       ? el("p", { class: "waiting-strip", text: t("matchesWaiting", { count: waitingCount }) })
       : null,
-    renderDiagramSection(t("winnersBracket"), bracketDiagram(wbMatches, state, records), false),
-    renderDiagramSection(t("losersBracket"), bracketDiagram(lbMatches, state, records), false),
+  ]);
+
+  const liveRight = el("div", { class: "live-right" }, [
+    renderDiagramSection(t("winnersBracket"), bracketDiagram(wbMatches, state, records), true),
+    renderDiagramSection(t("losersBracket"), bracketDiagram(lbMatches, state, records), true),
     grandFinalMatches.length > 0
       ? renderDiagramSection(t("grandFinal"), grandFinalSection(state, records), true)
       : null,
+  ]);
+
+  const screen = el("div", { class: "screen live-screen" }, [
+    el("h1", { text: t("liveMatches") }),
+    el("div", { class: "live-layout" }, [liveLeft, liveRight]),
     renderCompletedPanel(state, records, app, completedMatches),
     el("div", { class: "actions" }, [
       el("button", { text: t("downloadHtmlReport"), onclick: () => exportHTML(state) }),
