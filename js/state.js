@@ -25,6 +25,7 @@ export function createInitialState() {
     boards: [],
     grandFinal: null,
     championTeamId: null,
+    resultsUpload: null, // { status: "idle"|"uploading"|"success"|"error", error, path, uploadedAt }, set once a tournament completes
     createdAt: now,
     updatedAt: now,
   };

@@ -510,6 +510,10 @@ details.bracket-section summary {
   font-size: 0.9rem;
 }
 
+.waiting-strip.error {
+  color: var(--danger);
+}
+
 .modal-overlay {
   position: fixed;
   inset: 0;

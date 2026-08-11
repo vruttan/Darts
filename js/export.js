@@ -16,13 +16,102 @@ function downloadBlob(content, filename, mime) {
   URL.revokeObjectURL(url);
 }
 
-export function exportJSON(state) {
-  downloadBlob(JSON.stringify(state, null, 2), "darts-tournament-results.json", "application/json");
-}
-
 function teamLabel(state, id) {
   const team = state.teams.find((tm) => tm.id === id);
   return team ? team.name : t("tbd");
+}
+
+export function getRunnerUpId(state) {
+  const gf1 = state.matches[state.grandFinal.game1MatchId];
+  const gf2 = state.matches[state.grandFinal.resetMatchId];
+  const decisive = gf2.status === "complete" ? gf2 : gf1;
+  return decisive.loserId;
+}
+
+function playerNames(state, team) {
+  return team.playerIds.map((id) => state.players.find((p) => p.id === id)?.name || "?");
+}
+
+// Curates the full internal state down to what's useful for cross-tournament
+// stats: team/player *names* rather than internal ids (ids are per-session
+// counters, not stable across separate tournaments), plus derived standings
+// and elimination info. This is the shape saved both locally (exportJSON)
+// and to the GitHub results repo (see github.js).
+export function buildResultsSummary(state) {
+  const records = teamRecords(state.matches);
+  const runnerUpId = getRunnerUpId(state);
+  const allMatches = state.matchOrder.map((id) => state.matches[id]);
+
+  // Each team's last completed, non-bye loss determines where it was
+  // eliminated. The champion never loses, so both fields stay null for them.
+  // Walking completedMatchIds (true chronological play order) rather than
+  // comparing `round` numbers matters here: round numbering restarts in each
+  // bracket (winners round 1, losers round 1, grand final round 1 are all
+  // "round 1"), so the last entry written below is genuinely the latest
+  // match played, regardless of which bracket it was in.
+  const lastLoss = {};
+  for (const id of state.completedMatchIds || []) {
+    const m = state.matches[id];
+    if (!m || m.isBye || m.loserId == null) continue;
+    lastLoss[m.loserId] = m;
+  }
+
+  const standings = state.teams
+    .map((team) => {
+      const r = records[team.id] || { wins: 0, losses: 0 };
+      const loss = lastLoss[team.id];
+      const isChampion = team.id === state.championTeamId;
+      return {
+        teamId: team.id,
+        isChampion,
+        isRunnerUp: team.id === runnerUpId,
+        teamName: team.name,
+        players: playerNames(state, team),
+        wins: r.wins,
+        losses: r.losses,
+        eliminatedBracket: isChampion ? null : loss ? loss.bracket : null,
+        eliminatedRound: isChampion ? null : loss ? loss.round : null,
+      };
+    })
+    .sort((a, b) => {
+      if (a.isChampion || b.isChampion) return a.isChampion ? -1 : 1;
+      if (a.isRunnerUp || b.isRunnerUp) return a.isRunnerUp ? -1 : 1;
+      const roundDiff = (b.eliminatedRound || 0) - (a.eliminatedRound || 0);
+      if (roundDiff !== 0) return roundDiff;
+      const winsDiff = b.wins - a.wins;
+      if (winsDiff !== 0) return winsDiff;
+      return a.teamName.localeCompare(b.teamName);
+    })
+    .map(({ teamId, isChampion, isRunnerUp, ...entry }, i) => ({ ...entry, finalRank: i + 1 }));
+
+  const matches = allMatches.map((m) => ({
+    bracket: m.bracket,
+    round: m.round,
+    teamA: m.teamAId == null ? null : teamLabel(state, m.teamAId),
+    teamB: m.teamBId == null ? null : teamLabel(state, m.teamBId),
+    winner: m.winnerId == null ? null : teamLabel(state, m.winnerId),
+    isBye: m.isBye,
+  }));
+
+  const championTeam = state.teams.find((tm) => tm.id === state.championTeamId);
+  const runnerUpTeam = state.teams.find((tm) => tm.id === runnerUpId);
+
+  return {
+    schemaVersion: 1,
+    date: state.createdAt,
+    completedAt: state.updatedAt,
+    playerCount: state.players.length,
+    teamsMode: state.teamsMode,
+    boardNames: state.boardNames,
+    champion: { teamName: teamLabel(state, state.championTeamId), players: championTeam ? playerNames(state, championTeam) : [] },
+    runnerUp: { teamName: teamLabel(state, runnerUpId), players: runnerUpTeam ? playerNames(state, runnerUpTeam) : [] },
+    standings,
+    matches,
+  };
+}
+
+export function exportJSON(state) {
+  downloadBlob(JSON.stringify(buildResultsSummary(state), null, 2), "darts-tournament-results.json", "application/json");
 }
 
 function escapeHtml(str) {
@@ -125,10 +214,7 @@ export function grandFinalSection(state, records) {
 }
 
 export function exportHTML(state) {
-  const gf1 = state.matches[state.grandFinal.game1MatchId];
-  const gf2 = state.matches[state.grandFinal.resetMatchId];
-  const decisive = gf2.status === "complete" ? gf2 : gf1;
-  const runnerUpId = decisive.loserId;
+  const runnerUpId = getRunnerUpId(state);
 
   const championName = escapeHtml(teamLabel(state, state.championTeamId));
   const runnerUpName = escapeHtml(teamLabel(state, runnerUpId));

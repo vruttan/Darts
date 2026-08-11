@@ -4,6 +4,8 @@ import * as Store from "./state.js";
 import * as Players from "./players.js";
 import { recordResult, simulateEditResult, editResult } from "./boards.js";
 import * as I18n from "./i18n.js";
+import * as Github from "./github.js";
+import { buildResultsSummary } from "./export.js";
 import { renderSetupNames, renderManualPairing, renderTeamConfirm, renderBoardCount } from "./ui/setup-view.js";
 import { renderMatchView } from "./ui/match-view.js";
 import { renderChampionView } from "./ui/champion-view.js";
@@ -98,6 +100,23 @@ const app = {
     state.phase = "teams";
     persistAndRender();
   },
+  saveResultsToGithub() {
+    const config = Github.loadConfig();
+    const summary = buildResultsSummary(state);
+    const path = (state.resultsUpload && state.resultsUpload.path) || Github.resultsPath(config, summary);
+    state.resultsUpload = { status: "uploading", error: null, path, uploadedAt: null };
+    persistAndRender();
+    Github.uploadResults(config, summary, path).then((result) => {
+      state.resultsUpload = result.ok
+        ? { status: "success", error: null, path, uploadedAt: new Date().toISOString() }
+        : { status: "error", error: result.kind, path, uploadedAt: null };
+      persistAndRender();
+    });
+  },
+  saveGithubConfig(fields) {
+    Github.saveConfig(fields);
+    app.saveResultsToGithub();
+  },
   // Manually forces the same update check the app already runs on its own
   // whenever the tab regains focus (see the service worker registration
   // below) — for someone who wants to confirm right now rather than wait.
@@ -133,6 +152,12 @@ function render() {
       break;
     case "complete":
       renderChampionView(root, state, app);
+      // Auto-attempt exactly once per completed tournament, deferred to the
+      // next tick so it doesn't re-enter persistAndRender()/render() (and
+      // thus this same renderChampionView() call) before this one returns.
+      if (!state.resultsUpload && Github.hasConfig(Github.loadConfig())) {
+        setTimeout(() => app.saveResultsToGithub(), 0);
+      }
       break;
     case "setup":
     default:
