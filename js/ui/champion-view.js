@@ -140,7 +140,8 @@ export function renderChampionView(root, state, app) {
       el("p", { text: `${t("runnerUpLabel")} ${teamLabel(state, runnerUpId)}` }),
     ]),
     el("div", { class: "actions" }, [
-      el("button", { class: "secondary", text: t("downloadJsonData"), onclick: () => exportJSON(state) }),
+      // Hidden for now; re-enable by uncommenting to restore the JSON export button.
+      // el("button", { class: "secondary", text: t("downloadJsonData"), onclick: () => exportJSON(state) }),
       el("button", {
         class: "danger",
         text: t("startNewTournament"),
