@@ -49,6 +49,13 @@ export function teamRecords(matches) {
   return records;
 }
 
+// Suggests a starting board count for a double-elimination tournament: enough
+// to run roughly half the teams' matches at once (so round 1 doesn't bottleneck
+// on a single board), capped at 4 since more than that gets hard to referee.
+export function recommendedBoardCount(teamCount) {
+  return Math.min(4, Math.max(1, Math.floor(teamCount / 2)));
+}
+
 let idCounter = 0;
 export function makeId(prefix) {
   idCounter += 1;

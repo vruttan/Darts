@@ -2,6 +2,7 @@
 
 import { el, mount } from "./render.js";
 import { t } from "../i18n.js";
+import { recommendedBoardCount } from "../util.js";
 
 const MIN_PLAYERS = 4;
 
@@ -230,7 +231,10 @@ export function renderBoardCount(root, state, app) {
       chips,
       el("p", {
         class: "waiting-strip",
-        text: state.boardNames.length === 0 ? t("noBoardsYet") : t("boardsEntered", { count: state.boardNames.length }),
+        text:
+          state.boardNames.length === 0
+            ? t("recommendedBoards", { count: recommendedBoardCount(state.teams.length), teams: state.teams.length })
+            : t("boardsEntered", { count: state.boardNames.length }),
       }),
     ]),
     el("div", { class: "actions" }, [
