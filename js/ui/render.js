@@ -33,6 +33,14 @@ export function mount(root, node) {
   root.appendChild(node);
 }
 
+export function renderDiagramSection(title, html) {
+  if (!html) return null;
+  return el("details", { class: "bracket-section", open: true }, [
+    el("summary", { text: title }),
+    el("div", { class: "bd-wrap", html }),
+  ]);
+}
+
 // In-app replacement for window.confirm(): browsers add a "don't allow this
 // site to prompt again" checkbox to native confirm() after repeated calls,
 // which then silently blocks all future prompts. This avoids that entirely.

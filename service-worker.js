@@ -4,7 +4,7 @@
 //
 // Bump CACHE_NAME on every deploy to bust old caches (no build tooling here
 // to content-hash filenames).
-const CACHE_NAME = "darts-v15";
+const CACHE_NAME = "darts-v16";
 
 const ASSETS = [
   "./",
@@ -19,6 +19,7 @@ const ASSETS = [
   "./js/boards.js",
   "./js/export.js",
   "./js/github.js",
+  "./js/registration.js",
   "./js/util.js",
   "./js/i18n.js",
   "./js/ui/render.js",
@@ -26,13 +27,24 @@ const ASSETS = [
   "./js/ui/match-view.js",
   "./js/ui/champion-view.js",
   "./js/ui/completed-matches.js",
+  "./js/ui/history-view.js",
+  "./js/ui/github-config-form.js",
   "./icons/icon-192.png",
   "./icons/icon-512.png",
 ];
 
 self.addEventListener("install", (event) => {
   event.waitUntil(
-    caches.open(CACHE_NAME).then((cache) => cache.addAll(ASSETS)).then(() => self.skipWaiting())
+    caches
+      .open(CACHE_NAME)
+      .then((cache) =>
+        // Fetch with cache: "reload" (not cache.addAll) so a fresh
+        // CACHE_NAME bucket always gets bytes straight from the network,
+        // never a stale copy the browser's own HTTP cache is still holding
+        // from before this deploy.
+        Promise.all(ASSETS.map((url) => fetch(url, { cache: "reload" }).then((response) => cache.put(url, response))))
+      )
+      .then(() => self.skipWaiting())
   );
 });
 
