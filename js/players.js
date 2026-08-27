@@ -38,6 +38,7 @@ export function generateTeams(state) {
     p.sittingOut = sitOutPlayer != null && p.id === sitOutPlayer.id;
   }
   state.teams = teams;
+  state.manualPairing = null; // discard any stale/partial hand-edit session
   return { sitOutPlayerId: sitOutPlayer ? sitOutPlayer.id : null };
 }
 
@@ -88,11 +89,23 @@ export function selectManualPlayer(state, playerId) {
   updateManualSitOut(state);
 }
 
-// Breaks up a manually-formed team, returning both players to the unpaired pool.
-export function undoManualTeam(state, teamId) {
+// Breaks up one team — however it was formed, random or manual — returning
+// both its players to the manual-pairing pool so they can be re-paired by
+// hand. This is the shared primitive behind "Undo" on the manual-pairing
+// screen and "Edit" on a team card in the confirm screen.
+export function unpairTeam(state, teamId) {
   const idx = state.teams.findIndex((t) => t.id === teamId);
   if (idx === -1) return;
   const [team] = state.teams.splice(idx, 1);
+
+  if (!state.manualPairing) {
+    // Fold in anyone currently sitting out (from an odd-count random
+    // pairing) so they aren't silently dropped once updateManualSitOut()
+    // below recomputes sittingOut from unpairedIds alone.
+    const priorSitOutIds = state.players.filter((p) => p.sittingOut).map((p) => p.id);
+    state.manualPairing = { unpairedIds: priorSitOutIds, selectedId: null };
+  }
+
   state.manualPairing.unpairedIds.push(...team.playerIds);
   updateManualSitOut(state);
 }

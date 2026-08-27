@@ -79,3 +79,34 @@ export function showConfirm(message, onConfirm) {
   ]);
   document.body.appendChild(overlay);
 }
+
+// Same shape as showConfirm(), plus a <select> dropdown (`options` is an
+// array of {value, label}) whose chosen value is passed to onConfirm.
+export function showConfirmWithSelect(message, options, onConfirm) {
+  const lines = [].concat(message);
+  const select = el(
+    "select",
+    {},
+    options.map((o) => el("option", { value: o.value, text: o.label }))
+  );
+  const overlay = el("div", { class: "modal-overlay" }, [
+    el("div", { class: "modal-overlay-inner" }, [
+      el("div", { class: "modal-dialog" }, [
+        ...lines.map((line) => el("p", { text: line })),
+        select,
+        el("div", { class: "actions row-actions" }, [
+          el("button", { class: "secondary", text: t("cancel"), onclick: () => overlay.remove() }),
+          el("button", {
+            class: "primary",
+            text: t("confirm"),
+            onclick: () => {
+              overlay.remove();
+              onConfirm(select.value);
+            },
+          }),
+        ]),
+      ]),
+    ]),
+  ]);
+  document.body.appendChild(overlay);
+}

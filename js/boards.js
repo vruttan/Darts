@@ -10,17 +10,44 @@ export function inProgressMatches(state) {
   return state.matchOrder.map((id) => state.matches[id]).filter((m) => m.status === "in-progress");
 }
 
+const isChampionshipMatch = (m) => m.bracket === "grandfinal" || m.bracket === "grandfinal-reset";
+
 // Fills any free boards with the next ready matches (in stable match order).
+// If state.championshipBoardNumber is set, the Grand Final (and its reset
+// game) is reserved for that specific board: other boards skip it and it
+// waits, unplayed, until that board frees up rather than jumping the queue
+// onto whichever board opens first.
 export function assignBoards(state) {
   const freeBoards = state.boards.filter((b) => b.matchId === null);
   const queue = readyMatches(state);
+  const reserved = state.championshipBoardNumber != null;
+  const justAssigned = [];
   for (const board of freeBoards) {
-    const next = queue.shift();
-    if (!next) break;
+    const isChampionshipBoard = reserved && state.championshipBoardNumber === board.number;
+    let index = isChampionshipBoard ? queue.findIndex(isChampionshipMatch) : -1;
+    if (index === -1) {
+      index = queue.findIndex((m) => !reserved || isChampionshipBoard || !isChampionshipMatch(m));
+    }
+    if (index === -1) continue;
+    const [next] = queue.splice(index, 1);
     board.matchId = next.id;
     next.boardNumber = board.number;
     next.status = "in-progress";
+    justAssigned.push(board.number);
   }
+  state.justAssignedBoards = justAssigned;
+}
+
+// True when completing `matchId` right now would be the last piece needed to
+// make the Grand Final (gf-1) playable — i.e. this is the winners- or
+// losers-bracket final. Used to prompt for a Championship board pick at the
+// moment it actually matters, rather than on every match confirm.
+export function matchUnlocksGrandFinal(state, matchId) {
+  const gf1 = state.matches["gf-1"];
+  if (!gf1 || gf1.status !== "pending") return false;
+  const sources = [gf1.teamASource, gf1.teamBSource].filter(Boolean);
+  if (!sources.some((s) => s.matchId === matchId)) return false;
+  return sources.every((s) => s.matchId === matchId || state.matches[s.matchId].status === "complete");
 }
 
 function freeBoardForMatch(state, matchId) {

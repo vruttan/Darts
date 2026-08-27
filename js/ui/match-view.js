@@ -2,10 +2,11 @@
 // winner, plus collapsible graphical bracket diagrams (same rendering as the
 // HTML export) for both brackets and the grand final.
 
-import { el, mount, showConfirm } from "./render.js";
+import { el, mount, showConfirm, showConfirmWithSelect } from "./render.js";
 import { teamRecords } from "../util.js";
 import { exportHTML, bracketDiagram, grandFinalSection } from "../export.js";
 import { renderCompletedPanel } from "./completed-matches.js";
+import { matchUnlocksGrandFinal } from "../boards.js";
 import { t } from "../i18n.js";
 
 function teamLabel(state, teamId) {
@@ -43,10 +44,20 @@ function renderBoardCard(state, records, app, board) {
   const bName = teamDisplay(state, records, match.teamBId);
 
   function pickWinner(teamId) {
-    showConfirm(t("confirmWinner", { name: teamLabel(state, teamId) }), () => app.recordResult(match.id, teamId));
+    if (state.boards.length > 1 && matchUnlocksGrandFinal(state, match.id)) {
+      showConfirmWithSelect(
+        [t("confirmWinner", { name: teamLabel(state, teamId) }), t("chooseChampionshipBoard")],
+        state.boards.map((b) => ({ value: String(b.number), label: b.name })),
+        (boardNumber) => app.recordResult(match.id, teamId, Number(boardNumber))
+      );
+    } else {
+      showConfirm(t("confirmWinner", { name: teamLabel(state, teamId) }), () => app.recordResult(match.id, teamId));
+    }
   }
 
-  return el("div", { class: "board-card" }, [
+  const isJustAssigned = (state.justAssignedBoards || []).includes(board.number);
+
+  return el("div", { class: isJustAssigned ? "board-card just-assigned" : "board-card" }, [
     el("div", { class: "board-label", text: `${labelPrefix}${board.name}` }),
     el("button", { class: "team-tap", text: aName, onclick: () => pickWinner(match.teamAId) }),
     el("div", { class: "vs", text: t("vs") }),

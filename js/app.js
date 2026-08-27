@@ -61,8 +61,8 @@ const app = {
     Players.selectManualPlayer(state, playerId);
     persistAndRender();
   },
-  undoManualTeam(teamId) {
-    Players.undoManualTeam(state, teamId);
+  unpairTeam(teamId) {
+    Players.unpairTeam(state, teamId);
     persistAndRender();
   },
   editManualPairing() {
@@ -89,7 +89,8 @@ const app = {
     Store.startTournament(state);
     persistAndRender();
   },
-  recordResult(matchId, winnerId) {
+  recordResult(matchId, winnerId, championshipBoardNumber) {
+    if (championshipBoardNumber != null) state.championshipBoardNumber = championshipBoardNumber;
     recordResult(state, matchId, winnerId);
     persistAndRender();
   },
@@ -185,7 +186,7 @@ function render() {
   }
   switch (state.phase) {
     case "teams":
-      if (state.teamsMode === "manual" && !Players.isManualPairingComplete(state)) {
+      if (!Players.isManualPairingComplete(state)) {
         renderManualPairing(root, state, app);
       } else {
         renderTeamConfirm(root, state, app);

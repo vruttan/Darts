@@ -114,7 +114,7 @@ export function renderManualPairing(root, state, app) {
   const teamRows = state.teams.map((team) =>
     el("div", { class: "team-card row" }, [
       el("span", { text: team.name }),
-      el("button", { class: "link", text: t("undo"), onclick: () => app.undoManualTeam(team.id) }),
+      el("button", { class: "link", text: t("undo"), onclick: () => app.unpairTeam(team.id) }),
     ])
   );
 
@@ -171,7 +171,12 @@ export function renderTeamConfirm(root, state, app) {
     ])
     : null;
 
-  const teamCards = state.teams.map((team) => el("div", { class: "team-card", text: team.name }));
+  const teamCards = state.teams.map((team) =>
+    el("div", { class: "team-card row" }, [
+      el("span", { text: team.name }),
+      el("button", { class: "link", text: t("editTeam"), onclick: () => app.unpairTeam(team.id) }),
+    ])
+  );
 
   const redoButton =
     state.teamsMode === "manual"

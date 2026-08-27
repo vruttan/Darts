@@ -309,6 +309,11 @@ button.link {
   opacity: 0.9;
 }
 
+.board-card.just-assigned {
+  background: rgba(46, 158, 91, 0.28);
+  border-color: var(--accent);
+}
+
 .team-tap {
   display: block;
   width: 100%;

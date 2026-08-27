@@ -4,7 +4,15 @@
 // dependencies, so this runs directly under Node.
 
 import { generateBracket } from "../js/bracket.js";
-import { recordResult, assignBoards, readyMatches, inProgressMatches, simulateEditResult, editResult } from "../js/boards.js";
+import {
+  recordResult,
+  assignBoards,
+  readyMatches,
+  inProgressMatches,
+  simulateEditResult,
+  editResult,
+  matchUnlocksGrandFinal,
+} from "../js/boards.js";
 
 let passCount = 0;
 let failures = [];
@@ -186,6 +194,64 @@ test("editing gf-1 after a bracket reset was played reopens and clears gf-2", ()
   assert(state.championTeamId === gf1.teamAId, "champion should immediately be the new gf-1 winner");
   assert(state.phase === "complete", "phase should be complete again immediately, no reset needed");
   assert(!state.completedMatchIds.includes("gf-2"), "gf-2 should no longer be in the completed log");
+});
+
+// ---- matchUnlocksGrandFinal: flags exactly the match whose completion makes gf-1 ready ----
+// The WB final's loser feeds the LB final, so gf-1's two feeders aren't
+// independent — playing serially (one board) lets this check the predicate
+// against every single completion in a real playthrough, not just a
+// hand-picked pair.
+test("matchUnlocksGrandFinal predicts exactly the match that flips gf-1 out of pending", () => {
+  const state = newTournamentState(8, 1);
+  const chooseA = (m) => m.teamAId;
+
+  assert(!matchUnlocksGrandFinal(state, "wb-r1-m1"), "an early, unrelated match should never unlock gf-1");
+
+  let iterations = 0;
+  while (state.matches["gf-1"].status === "pending" && iterations++ < 10000) {
+    const playable = readyMatches(state).concat(inProgressMatches(state));
+    assert(playable.length > 0, "should always have a playable match before gf-1 is ready");
+    const m = playable[0];
+    const predicted = matchUnlocksGrandFinal(state, m.id);
+    recordResult(state, m.id, chooseA(m));
+    const nowReady = state.matches["gf-1"].status !== "pending";
+    assert(predicted === nowReady, `matchUnlocksGrandFinal(${m.id}) predicted ${predicted} but gf-1 ready=${nowReady}`);
+  }
+  assert(state.matches["gf-1"].status !== "pending", "gf-1 should eventually become ready");
+});
+
+// ---- Without a championship board pick, gf-1 is assigned normally like any other match ----
+test("gf-1 gets assigned to a free board as usual when no championshipBoardNumber is set", () => {
+  const state = newTournamentState(8, 2);
+  const chooseA = (m) => m.teamAId;
+
+  playAllExcept(state, chooseA, "gf-1");
+
+  assert(
+    state.matches["gf-1"].status === "in-progress",
+    `gf-1 should be actively assigned to a board, got status ${state.matches["gf-1"].status}`
+  );
+  const hostingBoard = state.boards.find((b) => b.matchId === "gf-1");
+  assert(hostingBoard, "some board should be hosting gf-1");
+});
+
+// ---- championshipBoardNumber pins the Grand Final to a specific board ----
+test("championshipBoardNumber reserves that board for gf-1, no other board steals it", () => {
+  const state = newTournamentState(8, 2);
+  const chooseA = (m) => m.teamAId;
+  state.championshipBoardNumber = 2;
+
+  playAllExcept(state, chooseA, "gf-1");
+
+  assert(
+    state.matches["gf-1"].status === "ready" || state.matches["gf-1"].status === "in-progress",
+    "gf-1 should be playable once both feeders are done"
+  );
+
+  const board2 = state.boards.find((b) => b.number === 2);
+  assert(board2.matchId === "gf-1", `expected gf-1 pinned to board 2, board2.matchId=${board2.matchId}`);
+  const board1 = state.boards.find((b) => b.number === 1);
+  assert(board1.matchId !== "gf-1", "board 1 should never take the pinned Grand Final match");
 });
 
 // ---- Report ----

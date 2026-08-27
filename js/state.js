@@ -23,6 +23,8 @@ export function createInitialState() {
     matchOrder: [],
     completedMatchIds: [], // match ids in the order recordResult() completed them
     boards: [],
+    justAssignedBoards: [], // board numbers filled by the most recent assignBoards() call, for the "call these players" highlight
+    championshipBoardNumber: null, // board number picked to host the Grand Final, if any
     grandFinal: null,
     championTeamId: null,
     resultsUpload: null, // { status: "idle"|"uploading"|"success"|"error", error, path, uploadedAt }, set once a tournament completes
