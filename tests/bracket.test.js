@@ -183,6 +183,46 @@ test("grand final: LB champion wins game 1, bracket reset is played", () => {
   assert(state2.championTeamId === reset2.teamBId, "champion should be reset winner (LB side)");
 });
 
+// ---- Losers-bracket merge-round rematch avoidance ----
+// Reproduces a real event's 9-team bracket: two WB round-2 losers fight
+// back through the losers bracket and land in the same LB round-4 merge
+// step as the two teams they'd have to face if the merge paired players
+// purely by position (pool[i] vs fresh[i]) rather than by history. Forces
+// the exact win/loss pattern that produces this via match-id rules (not
+// team identity, so it's independent of however teams got shuffled into
+// seed slots), then checks the LB round-4 pairings don't just replay
+// wb-r2-m2 / wb-r2-m3.
+test("n=9: losers-bracket merge round avoids repeating an earlier winners-bracket pairing when possible", () => {
+  const teamIds = makeTeamIds(9);
+  const state = newTestState(teamIds);
+
+  const winnerRules = {
+    "wb-r2-m2": "teamA",
+    "wb-r2-m3": "teamA",
+    "wb-r3-m1": "teamA", // wb-r2-m2's winner loses here, dropping into the LB
+    "wb-r3-m2": "teamB", // wb-r2-m3's winner loses here, dropping into the LB
+    "lb-r3-m1": "teamB", // wb-r2-m3's original loser fights back to LB round 4
+    "lb-r3-m2": "teamA", // wb-r2-m2's original loser fights back to LB round 4
+  };
+
+  playAllExcept(state, (m) => {
+    const rule = winnerRules[m.id];
+    if (rule === "teamB") return m.teamBId;
+    return m.teamAId;
+  });
+
+  assert(state.phase === "complete", "tournament did not reach complete phase");
+
+  const pairOf = (id) => {
+    const m = state.matches[id];
+    return [m.teamAId, m.teamBId].sort().join("|");
+  };
+
+  const earlierPairs = new Set([pairOf("wb-r2-m2"), pairOf("wb-r2-m3")]);
+  assert(!earlierPairs.has(pairOf("lb-r4-m1")), "lb-r4-m1 repeats an earlier winners-bracket pairing");
+  assert(!earlierPairs.has(pairOf("lb-r4-m2")), "lb-r4-m2 repeats an earlier winners-bracket pairing");
+});
+
 // ---- Bye handling sanity check for a specific non-power-of-2 case ----
 test("n=5: exactly one real match in WB round 1 (3 byes, size=8)", () => {
   const teamIds = makeTeamIds(5);

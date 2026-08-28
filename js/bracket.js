@@ -258,6 +258,78 @@ export function generateBracket(teamIds) {
   };
 }
 
+function pairKey(a, b) {
+  return a < b ? `${a}|${b}` : `${b}|${a}`;
+}
+
+// Given two same-round losers-bracket matches (w vs x) and (y vs z), tries
+// the other two ways to re-pair those four teams if the current pairing
+// repeats an earlier matchup (anywhere in the bracket) and an alternative
+// pairing exists that repeats neither. Mutates the matches in place and
+// returns true if a swap was applied.
+function resolveRematchBetween(playedPairs, a, b) {
+  const w = a.teamAId,
+    x = a.teamBId,
+    y = b.teamAId,
+    z = b.teamBId;
+  const currentlyRematch = playedPairs.has(pairKey(w, x)) || playedPairs.has(pairKey(y, z));
+  if (!currentlyRematch) return false;
+
+  if (!playedPairs.has(pairKey(w, y)) && !playedPairs.has(pairKey(x, z))) {
+    a.teamBId = y;
+    b.teamAId = x;
+    b.teamBId = z;
+    return true;
+  }
+  if (!playedPairs.has(pairKey(w, z)) && !playedPairs.has(pairKey(x, y))) {
+    a.teamBId = z;
+    b.teamAId = x;
+    b.teamBId = y;
+    return true;
+  }
+  return false;
+}
+
+// Best-effort: within each losers-bracket round, re-pair teams among
+// matches that are "ready" but not yet started (no board assigned yet) to
+// avoid repeating a matchup that already happened earlier in the bracket
+// (winners or losers side), whenever an alternative re-pairing exists that
+// doesn't just trade one repeat for another. The bracket graph itself is
+// generated before any results exist, so it can't know in advance who will
+// end up facing whom (see generateBracket's doc comment) — this only
+// catches rematches once both sides of a merge-round pairing are actually
+// known, and only if none of the matches involved has already been
+// assigned to a board. Matches already in progress or complete are left
+// untouched.
+function avoidLosersRematches(state) {
+  const playedPairs = new Set();
+  for (const m of Object.values(state.matches)) {
+    if (m.status === "complete" && m.teamAId != null && m.teamBId != null) {
+      playedPairs.add(pairKey(m.teamAId, m.teamBId));
+    }
+  }
+
+  const byRound = new Map();
+  for (const m of Object.values(state.matches)) {
+    if (m.bracket !== "losers" || m.status !== "ready" || m.isBye || m.boardNumber != null) continue;
+    if (!byRound.has(m.round)) byRound.set(m.round, []);
+    byRound.get(m.round).push(m);
+  }
+
+  for (const group of byRound.values()) {
+    if (group.length < 2) continue;
+    let changed = true;
+    while (changed) {
+      changed = false;
+      for (let i = 0; i < group.length && !changed; i++) {
+        for (let j = i + 1; j < group.length && !changed; j++) {
+          changed = resolveRematchBetween(playedPairs, group[i], group[j]);
+        }
+      }
+    }
+  }
+}
+
 function handleGrandFinalLogic(state) {
   const gf = state.grandFinal;
   const game1 = state.matches[gf.game1MatchId];
@@ -307,6 +379,7 @@ export function completeMatch(state, matchId, winnerId) {
   match.status = "complete";
 
   propagateFrom(state.matches, match);
+  avoidLosersRematches(state);
   handleGrandFinalLogic(state);
   checkChampion(state);
 
