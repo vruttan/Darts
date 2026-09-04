@@ -43,7 +43,7 @@ export function hasConfig(config) {
 }
 
 export function resultsPath(config, summary) {
-  const slug = summary.date.replace(/[:.]/g, "-");
+  const slug = summary.completedAt.replace(/[:.]/g, "-");
   return `${config.pathPrefix || DEFAULT_PATH_PREFIX}/${slug}.json`;
 }
 
@@ -148,7 +148,7 @@ export async function fetchResult(config, path) {
 // Never throws — always resolves to a normalized result so callers can
 // render a status without try/catch plumbing.
 export async function uploadResults(config, summary, path) {
-  const message = `Tournament results — champion ${summary.champion.teamName} (${summary.date})`;
+  const message = `Tournament results — champion ${summary.champion.teamName} (${summary.completedAt})`;
   const content = utf8ToBase64(JSON.stringify(summary, null, 2));
   const body = { message, content, ...(config.branch ? { branch: config.branch } : {}) };
 
