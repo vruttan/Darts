@@ -254,6 +254,37 @@ test("championshipBoardNumber reserves that board for gf-1, no other board steal
   assert(board1.matchId !== "gf-1", "board 1 should never take the pinned Grand Final match");
 });
 
+// ---- avoidLosersRematches must never touch a match once it holds a board ----
+test("a match already assigned a board is never mutated by rematch avoidance", () => {
+  // Few boards relative to bracket width so matches sit in-progress across
+  // multiple recordResult() calls, giving later completions in the same
+  // losers-bracket round a chance to try (and be refused) mutating them.
+  const state = newTournamentState(10, 2);
+  const boardedTeams = new Map();
+
+  let iterations = 0;
+  const maxIterations = 10000;
+  while (iterations++ < maxIterations) {
+    for (const m of inProgressMatches(state)) {
+      if (!boardedTeams.has(m.id)) {
+        boardedTeams.set(m.id, { teamAId: m.teamAId, teamBId: m.teamBId });
+      }
+    }
+    for (const [id, snap] of boardedTeams) {
+      const m = state.matches[id];
+      assert(
+        m.teamAId === snap.teamAId && m.teamBId === snap.teamBId,
+        `${id} was mutated after being assigned a board (was ${snap.teamAId}/${snap.teamBId}, now ${m.teamAId}/${m.teamBId})`
+      );
+    }
+    const playable = readyMatches(state).concat(inProgressMatches(state));
+    if (playable.length === 0) break;
+    for (const m of playable) recordResult(state, m.id, m.teamAId);
+  }
+  assert(iterations < maxIterations, "simulation did not terminate (possible infinite loop / bad wiring)");
+  assert(state.phase === "complete", "tournament did not reach complete phase");
+});
+
 // ---- Report ----
 console.log(`${passCount} passed, ${failures.length} failed`);
 for (const f of failures) console.log(`FAIL: ${f}`);

@@ -272,35 +272,48 @@ function resolveRematchBetween(playedPairs, a, b) {
     x = a.teamBId,
     y = b.teamAId,
     z = b.teamBId;
+  const aBSource = a.teamBSource,
+    bASource = b.teamASource,
+    bBSource = b.teamBSource;
   const currentlyRematch = playedPairs.has(pairKey(w, x)) || playedPairs.has(pairKey(y, z));
   if (!currentlyRematch) return false;
 
   if (!playedPairs.has(pairKey(w, y)) && !playedPairs.has(pairKey(x, z))) {
     a.teamBId = y;
+    a.teamBSource = bASource;
     b.teamAId = x;
+    b.teamASource = aBSource;
     b.teamBId = z;
+    b.teamBSource = bBSource;
     return true;
   }
   if (!playedPairs.has(pairKey(w, z)) && !playedPairs.has(pairKey(x, y))) {
     a.teamBId = z;
+    a.teamBSource = bBSource;
     b.teamAId = x;
+    b.teamASource = aBSource;
     b.teamBId = y;
+    b.teamBSource = bASource;
     return true;
   }
   return false;
 }
 
 // Best-effort: within each losers-bracket round, re-pair teams among
-// matches that are "ready" but not yet started (no board assigned yet) to
-// avoid repeating a matchup that already happened earlier in the bracket
-// (winners or losers side), whenever an alternative re-pairing exists that
-// doesn't just trade one repeat for another. The bracket graph itself is
-// generated before any results exist, so it can't know in advance who will
-// end up facing whom (see generateBracket's doc comment) — this only
-// catches rematches once both sides of a merge-round pairing are actually
-// known, and only if none of the matches involved has already been
-// assigned to a board. Matches already in progress or complete are left
-// untouched.
+// matches that are "ready" but not yet started to avoid repeating a matchup
+// that already happened earlier in the bracket (winners or losers side),
+// whenever an alternative re-pairing exists that doesn't just trade one
+// repeat for another. The bracket graph itself is generated before any
+// results exist, so it can't know in advance who will end up facing whom
+// (see generateBracket's doc comment) — this only catches rematches once
+// both sides of a merge-round pairing are actually known, and only among
+// matches still "ready": assignBoards() flips a match straight to
+// "in-progress" the instant it claims a board, so a match already showing
+// on a board is never eligible here and is left untouched. That means a
+// round where boards fill matches faster than the round's own pairings
+// resolve can end up with no eligible partner left to swap against, which
+// this function silently accepts rather than delaying board assignment to
+// wait for it (see recordResult in boards.js for the fill-order tradeoff).
 function avoidLosersRematches(state) {
   const playedPairs = new Set();
   for (const m of Object.values(state.matches)) {
@@ -311,20 +324,21 @@ function avoidLosersRematches(state) {
 
   const byRound = new Map();
   for (const m of Object.values(state.matches)) {
-    if (m.bracket !== "losers" || m.status !== "ready" || m.isBye || m.boardNumber != null) continue;
+    if (m.bracket !== "losers" || m.status !== "ready" || m.isBye) continue;
     if (!byRound.has(m.round)) byRound.set(m.round, []);
     byRound.get(m.round).push(m);
   }
 
+  // A single pass over every pair suffices: resolveRematchBetween only ever
+  // applies a swap that leaves both matches clean (not in playedPairs), and
+  // playedPairs never changes during this function, so a match can't be
+  // re-dirtied by a later swap — rescanning from the top can't find anything
+  // a linear pass would have missed.
   for (const group of byRound.values()) {
     if (group.length < 2) continue;
-    let changed = true;
-    while (changed) {
-      changed = false;
-      for (let i = 0; i < group.length && !changed; i++) {
-        for (let j = i + 1; j < group.length && !changed; j++) {
-          changed = resolveRematchBetween(playedPairs, group[i], group[j]);
-        }
+    for (let i = 0; i < group.length; i++) {
+      for (let j = i + 1; j < group.length; j++) {
+        resolveRematchBetween(playedPairs, group[i], group[j]);
       }
     }
   }
@@ -379,7 +393,11 @@ export function completeMatch(state, matchId, winnerId) {
   match.status = "complete";
 
   propagateFrom(state.matches, match);
-  avoidLosersRematches(state);
+  // Grand final / reset completions can never ready a losers-bracket match
+  // (nothing downstream of them feeds the LB), so skip the scan there.
+  if (match.bracket !== "grandfinal" && match.bracket !== "grandfinal-reset") {
+    avoidLosersRematches(state);
+  }
   handleGrandFinalLogic(state);
   checkChampion(state);
 

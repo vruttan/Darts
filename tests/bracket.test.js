@@ -221,6 +221,24 @@ test("n=9: losers-bracket merge round avoids repeating an earlier winners-bracke
   const earlierPairs = new Set([pairOf("wb-r2-m2"), pairOf("wb-r2-m3")]);
   assert(!earlierPairs.has(pairOf("lb-r4-m1")), "lb-r4-m1 repeats an earlier winners-bracket pairing");
   assert(!earlierPairs.has(pairOf("lb-r4-m2")), "lb-r4-m2 repeats an earlier winners-bracket pairing");
+
+  // A swap must keep teamASource/teamBSource in sync with teamAId/teamBId:
+  // each source pointer's referenced match should actually have produced the
+  // team currently sitting in that slot.
+  for (const id of ["lb-r4-m1", "lb-r4-m2"]) {
+    const m = state.matches[id];
+    for (const [teamId, source] of [
+      [m.teamAId, m.teamASource],
+      [m.teamBId, m.teamBSource],
+    ]) {
+      const feeder = state.matches[source.matchId];
+      const produced = feeder[source.slot === "winner" ? "winnerId" : "loserId"];
+      assert(
+        produced === teamId,
+        `${id}: source ${JSON.stringify(source)} produced ${produced}, but slot holds ${teamId}`
+      );
+    }
+  }
 });
 
 // ---- Bye handling sanity check for a specific non-power-of-2 case ----
