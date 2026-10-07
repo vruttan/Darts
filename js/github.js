@@ -99,10 +99,34 @@ async function putFile(config, path, body) {
   });
 }
 
+// A 404 from the Contents API is ambiguous: GitHub also answers 404 (not
+// 403) when the token can't see a private repo, or when `?ref=` names a
+// branch that doesn't exist. Probe the repo and branch directly to tell
+// those apart from a genuinely missing path. Resolves to null when both
+// are reachable, otherwise to a failure result like the callers return.
+async function diagnoseNotFound(config) {
+  const repoUrl = `https://api.github.com/repos/${config.owner}/${config.repo}`;
+  const probes = [[repoUrl, "reponotfound"]];
+  if (config.branch) probes.push([`${repoUrl}/branches/${encodeURIComponent(config.branch)}`, "branchnotfound"]);
+  for (const [url, kind] of probes) {
+    let response;
+    try {
+      response = await fetch(url, { headers: apiHeaders(config) });
+    } catch {
+      return { ok: false, kind: "network" };
+    }
+    if (response.status === 401) return { ok: false, kind: "auth" };
+    if (response.status === 404) return { ok: false, kind };
+    if (!response.ok) return { ok: false, kind: "other", status: response.status };
+  }
+  return null;
+}
+
 // Lists the JSON result files directly inside config.pathPrefix, newest
 // first (date-slug filenames sort correctly as plain strings). A missing
 // directory (no results uploaded yet) is a normal empty state, not an
-// error. Never throws, like uploadResults().
+// error — but only once diagnoseNotFound() rules out an inaccessible repo
+// or bad branch. Never throws, like uploadResults().
 export async function listResults(config) {
   const dir = config.pathPrefix || DEFAULT_PATH_PREFIX;
   let response;
@@ -112,7 +136,7 @@ export async function listResults(config) {
     return { ok: false, kind: "network" };
   }
 
-  if (response.status === 404) return { ok: true, files: [] };
+  if (response.status === 404) return (await diagnoseNotFound(config)) || { ok: true, files: [] };
   if (response.status === 401) return { ok: false, kind: "auth" };
   if (!response.ok) return { ok: false, kind: "other", status: response.status };
 

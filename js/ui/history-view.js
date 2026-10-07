@@ -10,6 +10,8 @@ import { bracketDiagram } from "../export.js";
 import { hasDiagramData, buildHistoricalBracketState } from "../util.js";
 import { t } from "../i18n.js";
 
+const CONFIG_ERROR_KINDS = ["auth", "reponotfound", "branchnotfound"];
+
 function historyErrorKey(kind) {
   switch (kind) {
     case "network":
@@ -18,6 +20,10 @@ function historyErrorKey(kind) {
       return "historyErrorAuth";
     case "notfound":
       return "historyErrorNotFound";
+    case "reponotfound":
+      return "historyErrorRepoNotFound";
+    case "branchnotfound":
+      return "historyErrorBranchNotFound";
     default:
       return "historyErrorGeneric";
   }
@@ -58,11 +64,21 @@ export function renderHistoryList(root, state, app, historyView) {
   if (historyView.status === "loading") {
     body = el("p", { class: "waiting-strip", text: t("historyLoading") });
   } else if (historyView.status === "error") {
+    // Token/repo/branch problems can't be fixed by retrying, so offer the
+    // config form right here instead of making the user detour through a
+    // finished tournament's champion screen to change it.
+    const configProblem = CONFIG_ERROR_KINDS.includes(historyView.error);
     body = el("div", {}, [
-      el("p", { class: "waiting-strip error", text: t(historyErrorKey(historyView.error)) }),
+      el("p", {
+        class: "waiting-strip error",
+        text: t(historyErrorKey(historyView.error), { repo: `${config.owner}/${config.repo}`, branch: config.branch }),
+      }),
       el("div", { class: "actions" }, [
         el("button", { class: "primary", text: t("retryUpload"), onclick: () => app.openHistory() }),
       ]),
+      configProblem
+        ? renderGithubConfigForm(root, state, app, config, (fields) => app.saveGithubConfigForHistory(fields))
+        : null,
     ]);
   } else if (historyView.files.length === 0) {
     body = el("p", { class: "waiting-strip", text: t("historyEmpty") });
