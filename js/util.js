@@ -56,10 +56,15 @@ export function recommendedBoardCount(teamCount) {
   return Math.min(4, Math.max(1, Math.floor(teamCount / 2)));
 }
 
+// The counter restarts at 0 on every page load, but players/teams created
+// before a reload are still in the restored state — so every id also carries
+// a per-load random tag, keeping ids unique across reloads (Android often
+// kills and relaunches the PWA mid-setup).
+const loadTag = Math.random().toString(36).slice(2, 8);
 let idCounter = 0;
 export function makeId(prefix) {
   idCounter += 1;
-  return `${prefix}-${idCounter}`;
+  return `${prefix}-${loadTag}-${idCounter}`;
 }
 
 // True only for a results summary (buildResultsSummary() in export.js)

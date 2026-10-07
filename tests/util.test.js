@@ -9,7 +9,8 @@
 
 import { generateBracket } from "../js/bracket.js";
 import { recordResult, assignBoards, readyMatches, inProgressMatches } from "../js/boards.js";
-import { teamRecords, hasDiagramData, buildHistoricalBracketState } from "../js/util.js";
+import { teamRecords, hasDiagramData, buildHistoricalBracketState, makeId as makeIdA } from "../js/util.js";
+const { makeId: makeIdB } = await import("../js/util.js?reload");
 
 let passCount = 0;
 let failures = [];
@@ -134,6 +135,16 @@ test("buildHistoricalBracketState partitions winners/losers matches with no over
   const expectedLb = summary.matches.filter((m) => m.bracket === "losers").length;
   assert(wbMatches.length === expectedWb, `expected ${expectedWb} winners-bracket matches, got ${wbMatches.length}`);
   assert(lbMatches.length === expectedLb, `expected ${expectedLb} losers-bracket matches, got ${lbMatches.length}`);
+});
+
+// ---- makeId stays unique across a page reload ----
+// A query string on the import gives a fresh module instance, which is what
+// a reload does to util.js's counter.
+test("makeId never repeats an id after a simulated page reload", () => {
+  const before = Array.from({ length: 5 }, () => makeIdA("p"));
+  const after = Array.from({ length: 5 }, () => makeIdB("p"));
+  const all = new Set([...before, ...after]);
+  assert(all.size === 10, `expected 10 unique ids, got ${all.size}: ${[...before, ...after].join(", ")}`);
 });
 
 // ---- Report ----

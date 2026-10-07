@@ -285,6 +285,65 @@ test("a match already assigned a board is never mutated by rematch avoidance", (
   assert(state.phase === "complete", "tournament did not reach complete phase");
 });
 
+// ---- Edit replay keeps the Championship board reservation ----
+test("editing a result keeps gf-1 pinned to the chosen championship board", () => {
+  const state = newTournamentState(8, 2);
+  const chooseA = (m) => m.teamAId;
+  state.championshipBoardNumber = 2;
+  playAllExcept(state, chooseA, "gf-1");
+
+  // Re-confirm an early result with the same winner: nothing reopens, so the
+  // replay should land in exactly the same place — gf-1 on board 2.
+  const firstId = state.completedMatchIds[0];
+  const reopened = editResult(state, firstId, state.matches[firstId].winnerId);
+  assert(reopened.length === 0, `expected no reopened matches, got ${reopened.join(", ")}`);
+  assert(state.championshipBoardNumber === 2, "championshipBoardNumber should survive an edit");
+  const board2 = state.boards.find((b) => b.number === 2);
+  assert(board2.matchId === "gf-1", `expected gf-1 on board 2 after edit, board2.matchId=${board2.matchId}`);
+  assert(state.matches["gf-1"].boardNumber === 2, "gf-1.boardNumber should be 2 after edit");
+});
+
+// ---- recordResult ignores matches that aren't playable ----
+test("recordResult on an already-completed match is a no-op", () => {
+  const state = newTournamentState(8, 2);
+  const m = inProgressMatches(state)[0];
+  const originalWinner = m.teamAId;
+  recordResult(state, m.id, originalWinner);
+  const snapshot = JSON.stringify(state);
+
+  recordResult(state, m.id, m.teamBId); // stale second confirm, other team
+  assert(JSON.stringify(state) === snapshot, "state should be unchanged by a repeat recordResult");
+  assert(state.matches[m.id].winnerId === originalWinner, "original winner should stand");
+});
+
+test("recordResult on a pending match is a no-op", () => {
+  const state = newTournamentState(8, 2);
+  const pending = state.matchOrder.map((id) => state.matches[id]).find((m) => m.status === "pending");
+  const snapshot = JSON.stringify(state);
+  recordResult(state, pending.id, "team1");
+  assert(JSON.stringify(state) === snapshot, "state should be unchanged");
+});
+
+// ---- completedAt follows the champion through edits ----
+test("editing gf-1 after completion clears completedAt until a new champion is decided", () => {
+  const state = newTournamentState(6, 2);
+  const chooseA = (m) => m.teamAId;
+  playAllExcept(state, chooseA);
+  assert(state.phase === "complete", "tournament should complete");
+  assert(typeof state.completedAt === "string", "completedAt should be set on completion");
+
+  // Flip gf-1 to the losers-bracket side: that forces a bracket reset, so
+  // the tournament is live again with no champion yet.
+  const gf1 = state.matches["gf-1"];
+  editResult(state, "gf-1", gf1.teamBId);
+  assert(state.phase === "live", `phase should be live after edit, got ${state.phase}`);
+  assert(state.completedAt === null, "completedAt should be cleared while undecided");
+
+  recordResult(state, "gf-2", state.matches["gf-2"].teamAId);
+  assert(state.phase === "complete", "tournament should complete again after gf-2");
+  assert(typeof state.completedAt === "string", "completedAt should be set again");
+});
+
 // ---- Report ----
 console.log(`${passCount} passed, ${failures.length} failed`);
 for (const f of failures) console.log(`FAIL: ${f}`);

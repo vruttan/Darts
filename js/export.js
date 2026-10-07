@@ -113,7 +113,7 @@ export function buildResultsSummary(state) {
   return {
     schemaVersion: 2,
     date: state.createdAt,
-    completedAt: state.updatedAt,
+    completedAt: state.completedAt || state.updatedAt, // updatedAt: states completed before completedAt existed
     playerCount: state.players.length,
     teamsMode: state.teamsMode,
     boardNames: state.boardNames,

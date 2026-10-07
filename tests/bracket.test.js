@@ -259,6 +259,49 @@ test("n=5: exactly one real match in WB round 1 (3 byes, size=8)", () => {
   assert(filledSlots === 3, `expected 3 pre-filled round-2 slots from byes, got ${filledSlots}`);
 });
 
+// ---- completeMatch rejects matches that aren't playable ----
+test("completeMatch throws on an already-completed match and leaves it untouched", () => {
+  const state = newTestState(makeTeamIds(8));
+  const m = readyMatches(state)[0];
+  const winner = m.teamAId;
+  completeMatch(state, m.id, winner);
+  let threw = false;
+  try {
+    completeMatch(state, m.id, m.teamBId);
+  } catch {
+    threw = true;
+  }
+  assert(threw, "completing an already-complete match should throw");
+  assert(state.matches[m.id].winnerId === winner, "winner should be unchanged");
+});
+
+test("completeMatch throws on a pending match", () => {
+  const state = newTestState(makeTeamIds(8));
+  let threw = false;
+  try {
+    completeMatch(state, "wb-r2-m1", "team1");
+  } catch {
+    threw = true;
+  }
+  assert(threw, "completing a pending match should throw");
+});
+
+// ---- completedAt is stamped exactly when a champion is decided ----
+test("completedAt is set when the champion is decided, for both GF outcomes", () => {
+  for (const resetPlayed of [false, true]) {
+    const state = newTestState(makeTeamIds(6));
+    playAllExcept(state, (m) => m.teamAId, "gf-1");
+    assert(state.completedAt == null, "completedAt should not be set before the grand final");
+    const gf1 = state.matches["gf-1"];
+    completeMatch(state, "gf-1", resetPlayed ? gf1.teamBId : gf1.teamAId);
+    if (resetPlayed) {
+      assert(state.completedAt == null, "completedAt should wait for the reset game");
+      completeMatch(state, "gf-2", state.matches["gf-2"].teamAId);
+    }
+    assert(typeof state.completedAt === "string", `completedAt missing (resetPlayed=${resetPlayed})`);
+  }
+});
+
 // ---- Report ----
 console.log(`${passCount} passed, ${failures.length} failed`);
 for (const f of failures) console.log(`FAIL: ${f}`);

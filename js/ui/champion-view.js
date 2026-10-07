@@ -44,6 +44,8 @@ function renderGithubStatusPanel(root, state, app, config) {
     statusLine = el("p", { class: "waiting-strip", text: t("uploadStatusUploading") });
   } else if (upload.status === "success") {
     statusLine = el("p", { class: "waiting-strip", text: t("uploadStatusSuccess") });
+  } else if (upload.status === "outdated") {
+    statusLine = el("p", { class: "waiting-strip error", text: t("uploadStatusOutdated") });
   } else if (upload.status === "error") {
     statusLine = el("p", { class: "waiting-strip error", text: t(uploadErrorKey(upload.error), { status: upload.error }) });
   }

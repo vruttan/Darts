@@ -14,8 +14,12 @@ const DEFAULT_PATH_PREFIX = "results";
 const API_VERSION = "2022-11-28";
 
 export function loadConfig() {
-  const raw = localStorage.getItem(CONFIG_KEY);
-  const saved = raw ? JSON.parse(raw) : {};
+  let saved = {};
+  try {
+    saved = JSON.parse(localStorage.getItem(CONFIG_KEY)) || {};
+  } catch {
+    // corrupt config: treat as unconfigured rather than crash every render
+  }
   return {
     token: saved.token || "",
     owner: DEFAULT_OWNER,

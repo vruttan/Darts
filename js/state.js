@@ -27,7 +27,8 @@ export function createInitialState() {
     championshipBoardNumber: null, // board number picked to host the Grand Final, if any
     grandFinal: null,
     championTeamId: null,
-    resultsUpload: null, // { status: "idle"|"uploading"|"success"|"error", error, path, uploadedAt }, set once a tournament completes
+    resultsUpload: null, // { status: "idle"|"uploading"|"success"|"error"|"outdated", error, path, uploadedAt }, set once a tournament completes
+    completedAt: null, // set by bracket.js's checkChampion() when a champion is decided
     createdAt: now,
     updatedAt: now,
   };
@@ -38,16 +39,23 @@ export function save(state) {
   localStorage.setItem(STORAGE_KEY, JSON.stringify(state));
 }
 
+// Where load() parks saved state it can't use (wrong schema version, or
+// unparseable), so an app update that lands mid-tournament doesn't silently
+// destroy the only copy of a live bracket.
+export const BACKUP_KEY = `${STORAGE_KEY}-backup`;
+
 export function load() {
   const raw = localStorage.getItem(STORAGE_KEY);
   if (!raw) return null;
+  let state = null;
   try {
-    const state = JSON.parse(raw);
-    if (state.version !== SCHEMA_VERSION) return null;
-    return state;
+    state = JSON.parse(raw);
   } catch {
-    return null;
+    // fall through to the backup below
   }
+  if (state && state.version === SCHEMA_VERSION) return state;
+  localStorage.setItem(BACKUP_KEY, raw);
+  return null;
 }
 
 export function clear() {

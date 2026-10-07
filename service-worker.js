@@ -4,7 +4,7 @@
 //
 // Bump CACHE_NAME on every deploy to bust old caches (no build tooling here
 // to content-hash filenames).
-const CACHE_NAME = "darts-v17";
+const CACHE_NAME = "darts-v18";
 
 const ASSETS = [
   "./",
@@ -42,7 +42,16 @@ self.addEventListener("install", (event) => {
         // CACHE_NAME bucket always gets bytes straight from the network,
         // never a stale copy the browser's own HTTP cache is still holding
         // from before this deploy.
-        Promise.all(ASSETS.map((url) => fetch(url, { cache: "reload" }).then((response) => cache.put(url, response))))
+        // A non-OK response fails the install (the old version keeps
+        // serving) instead of caching an error page forever.
+        Promise.all(
+          ASSETS.map((url) =>
+            fetch(url, { cache: "reload" }).then((response) => {
+              if (!response.ok) throw new Error(`Failed to cache ${url}: ${response.status}`);
+              return cache.put(url, response);
+            })
+          )
+        )
       )
       .then(() => self.skipWaiting())
   );
@@ -59,8 +68,15 @@ self.addEventListener("activate", (event) => {
 
 self.addEventListener("fetch", (event) => {
   if (event.request.method !== "GET") return;
+  // Only the app shell is cached. Cross-origin requests (the GitHub API) go
+  // straight to the network — caching them would freeze the past-results
+  // list at its first load and keep private repo data in Cache Storage.
+  if (new URL(event.request.url).origin !== self.location.origin) return;
+  // Navigations may carry a query string (e.g. ?source=pwa) that the cached
+  // index.html was never stored under.
+  const matchOptions = event.request.mode === "navigate" ? { ignoreSearch: true } : undefined;
   event.respondWith(
-    caches.match(event.request).then((cached) => {
+    caches.match(event.request, matchOptions).then((cached) => {
       if (cached) return cached;
       return fetch(event.request).then((response) => {
         if (response.ok) {

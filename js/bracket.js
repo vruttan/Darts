@@ -366,12 +366,14 @@ function checkChampion(state) {
   if (game1.status === "complete" && gf.resetNeeded === false) {
     state.championTeamId = game1.winnerId;
     state.phase = "complete";
+    state.completedAt = new Date().toISOString();
     return;
   }
   const reset = state.matches[gf.resetMatchId];
   if (reset.status === "complete") {
     state.championTeamId = reset.winnerId;
     state.phase = "complete";
+    state.completedAt = new Date().toISOString();
   }
 }
 
@@ -384,6 +386,9 @@ function checkChampion(state) {
 export function completeMatch(state, matchId, winnerId) {
   const match = state.matches[matchId];
   if (!match) throw new Error(`Unknown match id: ${matchId}`);
+  if (match.status !== "ready" && match.status !== "in-progress") {
+    throw new Error(`match ${matchId} is not playable (status: ${match.status})`);
+  }
   if (winnerId !== match.teamAId && winnerId !== match.teamBId) {
     throw new Error(`winnerId ${winnerId} is not a participant in match ${matchId}`);
   }

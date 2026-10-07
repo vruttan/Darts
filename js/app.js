@@ -99,6 +99,12 @@ const app = {
   },
   editResult(matchId, newWinnerId) {
     editResult(state, matchId, newWinnerId);
+    // An edit after completion invalidates anything already uploaded. Keep
+    // the path so the re-upload overwrites that file instead of adding a
+    // second copy of the same tournament to the history.
+    if (state.resultsUpload) {
+      state.resultsUpload = { status: "outdated", error: null, path: state.resultsUpload.path, uploadedAt: null };
+    }
     persistAndRender();
   },
   startNewTournament() {
@@ -208,7 +214,7 @@ function render() {
       // no token has been configured yet — the manual "Save Results to
       // GitHub" button in the champion view still covers those cases.
       if (
-        !state.resultsUpload &&
+        (!state.resultsUpload || state.resultsUpload.status === "outdated") &&
         !Registration.isUnregistered() &&
         navigator.onLine &&
         Github.hasConfig(Github.loadConfig())

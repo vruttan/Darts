@@ -59,6 +59,11 @@ function freeBoardForMatch(state, matchId) {
 // bracket, frees the board that match was on, and fills any now-free boards
 // with newly-ready matches.
 export function recordResult(state, matchId, winnerId) {
+  // A stale confirm dialog (e.g. left open across a result edit) can fire for
+  // a match that's already been decided; ignore it rather than overwrite a
+  // result whose winner/loser has already propagated downstream.
+  const match = state.matches[matchId];
+  if (!match || (match.status !== "ready" && match.status !== "in-progress")) return state;
   freeBoardForMatch(state, matchId);
   completeMatch(state, matchId, winnerId);
   (state.completedMatchIds = state.completedMatchIds || []).push(matchId);
@@ -87,6 +92,8 @@ export function simulateEditResult(state, matchId, newWinnerId) {
     grandFinal: bracket.grandFinal,
     boards: state.boardNames.map((name, i) => ({ number: i + 1, name, matchId: null })),
     championTeamId: null,
+    championshipBoardNumber: state.championshipBoardNumber ?? null,
+    completedAt: null,
     completedMatchIds: [],
     phase: "live",
   };
