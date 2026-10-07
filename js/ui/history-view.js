@@ -10,7 +10,7 @@ import { bracketDiagram } from "../export.js";
 import { hasDiagramData, buildHistoricalBracketState } from "../util.js";
 import { t } from "../i18n.js";
 
-const CONFIG_ERROR_KINDS = ["auth", "reponotfound", "branchnotfound"];
+const CONFIG_ERROR_KINDS = ["auth", "reponotfound", "branchnotfound", "nocontentsaccess"];
 
 function historyErrorKey(kind) {
   switch (kind) {
@@ -24,6 +24,8 @@ function historyErrorKey(kind) {
       return "historyErrorRepoNotFound";
     case "branchnotfound":
       return "historyErrorBranchNotFound";
+    case "nocontentsaccess":
+      return "historyErrorNoContentsAccess";
     default:
       return "historyErrorGeneric";
   }

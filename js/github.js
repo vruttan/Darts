@@ -100,18 +100,21 @@ async function putFile(config, path, body) {
 }
 
 // A 404 from the Contents API is ambiguous: GitHub also answers 404 (not
-// 403) when the token can't see a private repo, or when `?ref=` names a
-// branch that doesn't exist. Probe the repo and branch directly to tell
-// those apart from a genuinely missing path. Resolves to null when both
+// 403) when the token can't see a private repo, when `?ref=` names a
+// branch that doesn't exist, or when a fine-grained token can see the repo
+// (Metadata is always granted) but lacks the Contents permission. Probe
+// the repo, branch, and repo root directly to tell those apart from a
+// genuinely missing path. Resolves to null when both
 // are reachable, otherwise to a failure result like the callers return.
 async function diagnoseNotFound(config) {
   const repoUrl = `https://api.github.com/repos/${config.owner}/${config.repo}`;
   const probes = [[repoUrl, "reponotfound"]];
   if (config.branch) probes.push([`${repoUrl}/branches/${encodeURIComponent(config.branch)}`, "branchnotfound"]);
+  probes.push([`${repoUrl}/contents/${refQuery(config)}`, "nocontentsaccess"]);
   for (const [url, kind] of probes) {
     let response;
     try {
-      response = await fetch(url, { headers: apiHeaders(config) });
+      response = await fetch(url, { headers: apiHeaders(config), cache: "no-store" });
     } catch {
       return { ok: false, kind: "network" };
     }
@@ -131,7 +134,7 @@ export async function listResults(config) {
   const dir = config.pathPrefix || DEFAULT_PATH_PREFIX;
   let response;
   try {
-    response = await fetch(`${contentsUrl(config, dir)}${refQuery(config)}`, { headers: apiHeaders(config) });
+    response = await fetch(`${contentsUrl(config, dir)}${refQuery(config)}`, { headers: apiHeaders(config), cache: "no-store" });
   } catch {
     return { ok: false, kind: "network" };
   }
@@ -154,7 +157,7 @@ export async function listResults(config) {
 export async function fetchResult(config, path) {
   let response;
   try {
-    response = await fetch(`${contentsUrl(config, path)}${refQuery(config)}`, { headers: apiHeaders(config) });
+    response = await fetch(`${contentsUrl(config, path)}${refQuery(config)}`, { headers: apiHeaders(config), cache: "no-store" });
   } catch {
     return { ok: false, kind: "network" };
   }
@@ -202,7 +205,7 @@ export async function uploadResults(config, summary, path) {
     // Look it up and retry once; anything past that is a real conflict.
     let existing;
     try {
-      existing = await fetch(contentsUrl(config, path), { headers: apiHeaders(config) });
+      existing = await fetch(contentsUrl(config, path), { headers: apiHeaders(config), cache: "no-store" });
     } catch {
       return { ok: false, kind: "network" };
     }
