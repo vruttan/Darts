@@ -4,7 +4,7 @@
 //
 // Bump CACHE_NAME on every deploy to bust old caches (no build tooling here
 // to content-hash filenames).
-const CACHE_NAME = "darts-v20";
+const CACHE_NAME = "darts-v21";
 
 const ASSETS = [
   "./",
@@ -61,7 +61,7 @@ self.addEventListener("activate", (event) => {
   event.waitUntil(
     caches
       .keys()
-      .then((keys) => Promise.all(keys.filter((key) => key !== CACHE_NAME).map((key) => caches.delete(key))))
+      .then((keys) => Promise.all(keys.filter((key) => key.startsWith("darts-") && key !== CACHE_NAME).map((key) => caches.delete(key))))
       .then(() => self.clients.claim())
   );
 });
